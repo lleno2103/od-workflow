@@ -1,228 +1,23 @@
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=Playfair+Display:ital,wght@0,400..900;1,400..900&display=swap');
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Odò Design System - E-ink Aesthetic */
-
 @layer base {
   :root {
-    /* Paper-like background */
-    --background: 40 20% 98%;
-    --foreground: 0 0% 8%;
-
-    /* Card surfaces */
-    --card: 40 15% 96%;
-    --card-foreground: 0 0% 8%;
-
-    --popover: 40 20% 98%;
-    --popover-foreground: 0 0% 8%;
-
-    /* Primary - Verde Bandeira */
-    --primary: 145 63% 32%;
-    --primary-foreground: 0 0% 100%;
-
-    /* Secondary - Neutral paper */
-    --secondary: 40 10% 92%;
-    --secondary-foreground: 0 0% 15%;
-
-    /* Muted */
-    --muted: 40 10% 90%;
-    --muted-foreground: 0 0% 45%;
-
-    /* Accent - Azul Royal */
-    --accent: 220 70% 45%;
-    --accent-foreground: 0 0% 100%;
-
-    /* Destructive - Vermelho */
-    --destructive: 0 72% 51%;
-    --destructive-foreground: 0 0% 100%;
-
-    /* Warning - Amarelo */
-    --warning: 45 93% 47%;
-    --warning-foreground: 0 0% 8%;
-
-    /* Success */
-    --success: 145 63% 32%;
-    --success-foreground: 0 0% 100%;
-
-    /* Borders & inputs */
-    --border: 0 0% 82%;
-    --input: 0 0% 82%;
-    --ring: 145 63% 32%;
-
-    --radius: 0.375rem;
-
-    /* Sidebar */
-    --sidebar-background: 40 15% 96%;
-    --sidebar-foreground: 0 0% 15%;
-    --sidebar-primary: 145 63% 32%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 40 10% 90%;
-    --sidebar-accent-foreground: 0 0% 15%;
-    --sidebar-border: 0 0% 85%;
-    --sidebar-ring: 145 63% 32%;
-  }
-
-  .dark {
-    --background: 0 0% 8%;
-    --foreground: 40 20% 95%;
-
-    --card: 0 0% 12%;
-    --card-foreground: 40 20% 95%;
-
-    --popover: 0 0% 10%;
-    --popover-foreground: 40 20% 95%;
-
-    --primary: 145 55% 45%;
-    --primary-foreground: 0 0% 100%;
-
-    --secondary: 0 0% 18%;
-    --secondary-foreground: 40 20% 90%;
-
-    --muted: 0 0% 20%;
-    --muted-foreground: 0 0% 60%;
-
-    --accent: 220 60% 55%;
-    --accent-foreground: 0 0% 100%;
-
-    --destructive: 0 62% 45%;
-    --destructive-foreground: 0 0% 100%;
-
-    --warning: 45 85% 55%;
-    --warning-foreground: 0 0% 8%;
-
-    --success: 145 55% 45%;
-    --success-foreground: 0 0% 100%;
-
-    --border: 0 0% 25%;
-    --input: 0 0% 25%;
-    --ring: 145 55% 45%;
-
-    --sidebar-background: 0 0% 10%;
-    --sidebar-foreground: 40 20% 90%;
-    --sidebar-primary: 145 55% 45%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 0 0% 18%;
-    --sidebar-accent-foreground: 40 20% 90%;
-    --sidebar-border: 0 0% 22%;
-    --sidebar-ring: 145 55% 45%;
-  }
-}
-
-@layer base {
-  * {
-    @apply border-border;
+    /* Odò Brand Colors */
+    --odo-white: #FFFFFF;
+    --odo-verde: #1f1f1f;
+    --odo-vermelho: #E8112D;
+    --odo-azul: #002776;
+    --odo-amarelo: #FFDF00;
+    --odo-preto: #000000;
   }
 
   html {
-    font-family: 'DM Sans', system-ui, sans-serif;
+    font-size: 14px;
   }
 
   body {
-    @apply bg-background text-foreground antialiased;
-  }
-
-  h1, h2, h3, h4, h5, h6 {
-    font-family: 'Playfair Display', Georgia, serif;
-    @apply font-semibold tracking-tight;
-  }
-}
-
-@layer components {
-  .doc-card {
-    @apply bg-card border border-border rounded-md p-4 shadow-sm transition-all hover:shadow-md;
-  }
-
-  .status-badge {
-    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
-  }
-
-  .status-pendente {
-    @apply bg-warning/20 text-warning-foreground border border-warning/30;
-  }
-
-  .status-andamento {
-    @apply bg-accent/20 text-accent border border-accent/30;
-  }
-
-  .status-concluido {
-    @apply bg-success/20 text-success border border-success/30;
-  }
-
-  .status-cancelado {
-    @apply bg-destructive/20 text-destructive border border-destructive/30;
-  }
-
-  .nav-link {
-    @apply flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors;
-    @apply text-muted-foreground hover:text-foreground hover:bg-secondary;
-  }
-
-  .nav-link.active {
-    @apply bg-primary text-primary-foreground;
-  }
-
-  .page-header {
-    @apply mb-6 pb-4 border-b border-border;
-  }
-
-  .page-title {
-    @apply text-2xl md:text-3xl font-bold text-foreground;
-  }
-
-  .page-subtitle {
-    @apply text-sm text-muted-foreground mt-1;
-  }
-
-  .stat-card {
-    @apply bg-card border border-border rounded-lg p-4;
-  }
-
-  .stat-value {
-    @apply text-2xl font-bold text-foreground;
-  }
-
-  .stat-label {
-    @apply text-xs text-muted-foreground uppercase tracking-wide;
-  }
-
-  .data-table {
-    @apply w-full text-sm;
-  }
-
-  .data-table th {
-    @apply text-left font-medium text-muted-foreground uppercase tracking-wide text-xs py-3 px-4 border-b;
-  }
-
-  .data-table td {
-    @apply py-3 px-4 border-b border-border/50;
-  }
-
-  .data-table tr:hover {
-    @apply bg-muted/50;
-  }
-
-  .form-section {
-    @apply space-y-4 p-4 bg-card border border-border rounded-lg;
-  }
-
-  .input-label {
-    @apply text-sm font-medium text-foreground mb-1.5 block;
-  }
-}
-
-@layer utilities {
-  .font-display {
-    font-family: 'Playfair Display', Georgia, serif;
-  }
-
-  .font-body {
-    font-family: 'DM Sans', system-ui, sans-serif;
-  }
-
-  .text-balance {
-    text-wrap: balance;
+    @apply bg-gray-50 text-gray-900 font-sans antialiased;
   }
 }
