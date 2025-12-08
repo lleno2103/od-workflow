@@ -286,10 +286,7 @@ const Sidebar: React.FC = () => {
             {/* Header */}
             <div className="flex items-center justify-between p-3 border-b border-gray-200 h-14">
                 <div className="flex items-center gap-2 overflow-hidden">
-                    <div className="w-6 h-6 rounded-full bg-gradient-to-br from-green-600 to-green-700 flex-shrink-0 flex items-center justify-center">
-                        <span className="text-white text-xs font-bold">O</span>
-                    </div>
-                    {!isCollapsed && <span className="text-lg font-semibold whitespace-nowrap tracking-wide">Odò</span>}
+                    <span className="text-lg font-semibold whitespace-nowrap tracking-wide">Odò</span>
                 </div>
                 <button
                     onClick={toggleCollapse}

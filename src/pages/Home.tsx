@@ -20,7 +20,7 @@ const Dashboard: React.FC = () => {
             <div className="space-y-6">
                 {/* Welcome */}
                 <div>
-                    <h1 className="text-2xl font-semibold text-black mb-1">Bem-vindo ao Odò</h1>
+                    <h1 className="text-2xl font-semibold text-black mb-1">Bem-vindo!</h1>
                     <p className="text-sm text-gray-500">Sistema de Gestão de Produção de Moda</p>
                 </div>
 
