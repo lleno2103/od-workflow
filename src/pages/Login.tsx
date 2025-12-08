@@ -28,7 +28,7 @@ const Login: React.FC = () => {
             <div className="w-full max-w-[400px] bg-white rounded-xl shadow-lg p-8">
                 {/* Logo */}
                 <div className="text-center mb-8">
-                    <h1 className="text-2xl font-bold text-black mb-1 tracking-tight">O d ò</h1>
+                    <h1 className="text-2xl font-bold text-black mb-1 tracking-tight">O D Ò</h1>
                     <p className="text-xs text-gray-500 tracking-[0.2em] font-medium uppercase">Creative</p>
                 </div>
 
