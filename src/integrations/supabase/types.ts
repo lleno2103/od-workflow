@@ -14,7 +14,383 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      bom: {
+        Row: {
+          created_at: string
+          id: string
+          produto_id: string
+          updated_at: string
+          variante: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          produto_id: string
+          updated_at?: string
+          variante?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          produto_id?: string
+          updated_at?: string
+          variante?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bom_produto_id_fkey"
+            columns: ["produto_id"]
+            isOneToOne: false
+            referencedRelation: "produtos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bom_items: {
+        Row: {
+          bom_id: string
+          created_at: string
+          custo: number
+          id: string
+          nome: string
+          quantidade: number
+          tipo: string
+          unidade: string
+        }
+        Insert: {
+          bom_id: string
+          created_at?: string
+          custo?: number
+          id?: string
+          nome: string
+          quantidade?: number
+          tipo: string
+          unidade?: string
+        }
+        Update: {
+          bom_id?: string
+          created_at?: string
+          custo?: number
+          id?: string
+          nome?: string
+          quantidade?: number
+          tipo?: string
+          unidade?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bom_items_bom_id_fkey"
+            columns: ["bom_id"]
+            isOneToOne: false
+            referencedRelation: "bom"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      categorias: {
+        Row: {
+          created_at: string
+          descricao: string | null
+          id: string
+          nome: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          descricao?: string | null
+          id?: string
+          nome: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          descricao?: string | null
+          id?: string
+          nome?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      cronograma_semanas: {
+        Row: {
+          created_at: string
+          cronograma_id: string
+          id: string
+          numero: number
+          responsavel: string | null
+          status: string
+          tarefas: string[]
+          titulo: string
+        }
+        Insert: {
+          created_at?: string
+          cronograma_id: string
+          id?: string
+          numero: number
+          responsavel?: string | null
+          status?: string
+          tarefas?: string[]
+          titulo: string
+        }
+        Update: {
+          created_at?: string
+          cronograma_id?: string
+          id?: string
+          numero?: number
+          responsavel?: string | null
+          status?: string
+          tarefas?: string[]
+          titulo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cronograma_semanas_cronograma_id_fkey"
+            columns: ["cronograma_id"]
+            isOneToOne: false
+            referencedRelation: "cronogramas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cronogramas: {
+        Row: {
+          created_at: string
+          data_fim: string
+          data_inicio: string
+          id: string
+          nome: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          data_fim: string
+          data_inicio: string
+          id?: string
+          nome: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          data_fim?: string
+          data_inicio?: string
+          id?: string
+          nome?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      fichas_tecnicas: {
+        Row: {
+          ativo: boolean
+          codigo: string
+          composicao: string | null
+          created_at: string
+          especificacoes_costura: Json | null
+          fornecedor: string | null
+          id: string
+          material: string | null
+          medidas: Json | null
+          observacoes: string | null
+          produto_id: string
+          updated_at: string
+          variante: string
+        }
+        Insert: {
+          ativo?: boolean
+          codigo: string
+          composicao?: string | null
+          created_at?: string
+          especificacoes_costura?: Json | null
+          fornecedor?: string | null
+          id?: string
+          material?: string | null
+          medidas?: Json | null
+          observacoes?: string | null
+          produto_id: string
+          updated_at?: string
+          variante: string
+        }
+        Update: {
+          ativo?: boolean
+          codigo?: string
+          composicao?: string | null
+          created_at?: string
+          especificacoes_costura?: Json | null
+          fornecedor?: string | null
+          id?: string
+          material?: string | null
+          medidas?: Json | null
+          observacoes?: string | null
+          produto_id?: string
+          updated_at?: string
+          variante?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fichas_tecnicas_produto_id_fkey"
+            columns: ["produto_id"]
+            isOneToOne: false
+            referencedRelation: "produtos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ordens_producao: {
+        Row: {
+          cor: string
+          created_at: string
+          data: string
+          id: string
+          metragem: number | null
+          numero: string
+          observacoes: string | null
+          prazo: string | null
+          produto_id: string
+          quantidade: number
+          responsavel: string | null
+          status: string
+          tecido: string | null
+          updated_at: string
+          variante: string
+        }
+        Insert: {
+          cor: string
+          created_at?: string
+          data?: string
+          id?: string
+          metragem?: number | null
+          numero: string
+          observacoes?: string | null
+          prazo?: string | null
+          produto_id: string
+          quantidade: number
+          responsavel?: string | null
+          status?: string
+          tecido?: string | null
+          updated_at?: string
+          variante: string
+        }
+        Update: {
+          cor?: string
+          created_at?: string
+          data?: string
+          id?: string
+          metragem?: number | null
+          numero?: string
+          observacoes?: string | null
+          prazo?: string | null
+          produto_id?: string
+          quantidade?: number
+          responsavel?: string | null
+          status?: string
+          tecido?: string | null
+          updated_at?: string
+          variante?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ordens_producao_produto_id_fkey"
+            columns: ["produto_id"]
+            isOneToOne: false
+            referencedRelation: "produtos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      produtos: {
+        Row: {
+          ativo: boolean
+          categoria_id: string | null
+          codigo: string
+          created_at: string
+          descricao: string | null
+          id: string
+          imagem_principal: string | null
+          nome: string
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          categoria_id?: string | null
+          codigo: string
+          created_at?: string
+          descricao?: string | null
+          id?: string
+          imagem_principal?: string | null
+          nome: string
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          categoria_id?: string | null
+          codigo?: string
+          created_at?: string
+          descricao?: string | null
+          id?: string
+          imagem_principal?: string | null
+          nome?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "produtos_categoria_id_fkey"
+            columns: ["categoria_id"]
+            isOneToOne: false
+            referencedRelation: "categorias"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      variantes: {
+        Row: {
+          ativo: boolean
+          cor: string
+          created_at: string
+          custo_producao: number
+          estoque: number
+          id: string
+          preco_venda: number
+          produto_id: string
+          sku: string
+          tamanho: string
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          cor: string
+          created_at?: string
+          custo_producao?: number
+          estoque?: number
+          id?: string
+          preco_venda?: number
+          produto_id: string
+          sku: string
+          tamanho: string
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          cor?: string
+          created_at?: string
+          custo_producao?: number
+          estoque?: number
+          id?: string
+          preco_venda?: number
+          produto_id?: string
+          sku?: string
+          tamanho?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "variantes_produto_id_fkey"
+            columns: ["produto_id"]
+            isOneToOne: false
+            referencedRelation: "produtos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
