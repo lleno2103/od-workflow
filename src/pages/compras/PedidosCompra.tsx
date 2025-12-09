@@ -1,71 +1,192 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Layout } from '../../components';
+import { supabase } from '../../integrations/supabase/client';
+import { toast } from 'sonner';
+import { useMateriais } from '../../hooks/useMateriais';
 
 type TabType = 'lista' | 'novo';
+
+interface Fornecedor {
+    id: string;
+    nome: string;
+}
+
+interface ItemPedido {
+    id?: string;
+    material_id?: string;
+    material_nome: string;
+    quantidade: number;
+    unidade: string;
+    valor_unitario: number;
+    valor_total?: number;
+}
 
 interface PedidoCompra {
     id: string;
     numero: string;
-    fornecedor: string;
-    data: string;
-    dataEntrega: string;
-    valorTotal: number;
+    fornecedor_id: string;
+    fornecedor?: Fornecedor; // Joined
+    data_pedido: string;
+    data_entrega: string;
+    valor_total: number;
     status: 'pendente' | 'enviado' | 'confirmado' | 'recebido' | 'cancelado';
     itens: ItemPedido[];
-}
-
-interface ItemPedido {
-    material: string;
-    quantidade: number;
-    unidade: string;
-    valorUnitario: number;
-    valorTotal: number;
+    observacoes?: string;
 }
 
 const PedidosCompra: React.FC = () => {
     const [activeTab, setActiveTab] = useState<TabType>('lista');
     const [searchTerm, setSearchTerm] = useState('');
     const [filtroStatus, setFiltroStatus] = useState('todos');
+    const [editingPedido, setEditingPedido] = useState<PedidoCompra | null>(null);
+    const [pedidos, setPedidos] = useState<PedidoCompra[]>([]);
+    const [fornecedores, setFornecedores] = useState<Fornecedor[]>([]);
+    const [loading, setLoading] = useState(false);
+    const { materiais, fetchMateriais } = useMateriais();
 
-    const [pedidos] = useState<PedidoCompra[]>([
-        {
-            id: '1',
-            numero: 'PC-001',
-            fornecedor: 'Tecidos Ltda',
-            data: '2025-11-28',
-            dataEntrega: '2025-12-05',
-            valorTotal: 2400.00,
-            status: 'confirmado',
-            itens: [
-                { material: 'Linho 100% 1,40m', quantidade: 40, unidade: 'm', valorUnitario: 60.00, valorTotal: 2400.00 }
-            ]
-        },
-        {
-            id: '2',
-            numero: 'PC-002',
-            fornecedor: 'Aviamentos Silva',
-            data: '2025-11-30',
-            dataEntrega: '2025-12-07',
-            valorTotal: 150.00,
-            status: 'enviado',
-            itens: [
-                { material: 'Botão madeira 12mm', quantidade: 100, unidade: 'un', valorUnitario: 0.50, valorTotal: 50.00 },
-                { material: 'Linha poliéster', quantidade: 50, unidade: 'un', valorUnitario: 2.00, valorTotal: 100.00 }
-            ]
-        },
-        {
-            id: '3',
-            numero: 'PC-003',
-            fornecedor: 'Embalagens Premium',
-            data: '2025-12-01',
-            dataEntrega: '2025-12-10',
-            valorTotal: 200.00,
-            status: 'pendente',
-            itens: [
-                { material: 'Etiqueta bordada', quantidade: 100, unidade: 'un', valorUnitario: 2.00, valorTotal: 200.00 }
-            ]
+    // Form data
+    const [formData, setFormData] = useState<Partial<PedidoCompra>>({
+        numero: '',
+        fornecedor_id: '',
+        data_pedido: new Date().toISOString().split('T')[0],
+        data_entrega: '',
+        observacoes: '',
+        status: 'pendente'
+    });
+    const [formItens, setFormItens] = useState<ItemPedido[]>([]);
+
+    useEffect(() => {
+        fetchPedidos();
+        fetchFornecedores();
+        fetchMateriais();
+    }, []);
+
+    useEffect(() => {
+        if (activeTab === 'novo' && !editingPedido) {
+            setFormData({
+                numero: `PC-${Math.floor(Math.random() * 10000).toString().padStart(4, '0')}`,
+                fornecedor_id: '',
+                data_pedido: new Date().toISOString().split('T')[0],
+                data_entrega: '',
+                observacoes: '',
+                status: 'pendente'
+            });
+            setFormItens([{ material_id: '', material_nome: '', quantidade: 0, unidade: 'un', valor_unitario: 0 }]);
+        } else if (activeTab === 'novo' && editingPedido) {
+            setFormData({
+                numero: editingPedido.numero,
+                fornecedor_id: editingPedido.fornecedor_id,
+                data_pedido: editingPedido.data_pedido,
+                data_entrega: editingPedido.data_entrega,
+                observacoes: editingPedido.observacoes,
+                status: editingPedido.status
+            });
+            setFormItens(editingPedido.itens.map(i => ({
+                material_id: i.material_id,
+                material_nome: i.material_nome,
+                quantidade: i.quantidade,
+                unidade: i.unidade,
+                valor_unitario: i.valor_unitario
+            })));
         }
-    ]);
+    }, [activeTab, editingPedido]);
+
+    const fetchFornecedores = async () => {
+        const { data } = await supabase.from('compras_fornecedores').select('id, nome');
+        if (data) setFornecedores(data);
+    };
+
+    const fetchPedidos = async () => {
+        setLoading(true);
+        try {
+            const { data, error } = await supabase
+                .from('compras_pedidos')
+                .select(`
+                    *,
+                    fornecedor:compras_fornecedores(nome),
+                    itens:compras_itens_pedido(*)
+                `)
+                .order('created_at', { ascending: false });
+
+            if (error) throw error;
+            setPedidos(data as unknown as PedidoCompra[]);
+        } catch (error) {
+            console.error('Erro ao buscar pedidos:', error);
+            toast.error('Erro ao carregar pedidos');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleEdit = (pedido: PedidoCompra) => {
+        setEditingPedido(pedido);
+        setActiveTab('novo');
+    };
+
+    const handleDelete = async (id: string) => {
+        if (!window.confirm('Tem certeza que deseja excluir este pedido?')) return;
+        try {
+            const { error } = await supabase.from('compras_pedidos').delete().eq('id', id);
+            if (error) throw error;
+            toast.success('Pedido excluído');
+            fetchPedidos();
+        } catch (error) {
+            console.error(error);
+            toast.error('Erro ao excluir pedido');
+        }
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setLoading(true);
+        try {
+            let pedidoId = editingPedido?.id;
+            const valorTotalPedido = formItens.reduce((acc, i) => acc + (i.quantidade * i.valor_unitario), 0);
+
+            const pedidoData = {
+                numero: formData.numero,
+                fornecedor_id: formData.fornecedor_id,
+                data_pedido: formData.data_pedido,
+                data_entrega: formData.data_entrega || null,
+                valor_total: valorTotalPedido,
+                observacoes: formData.observacoes,
+                status: formData.status || 'pendente'
+            };
+
+            if (editingPedido) {
+                const { error } = await supabase.from('compras_pedidos').update(pedidoData).eq('id', pedidoId);
+                if (error) throw error;
+                await supabase.from('compras_itens_pedido').delete().eq('pedido_id', pedidoId);
+            } else {
+                const { data, error } = await supabase.from('compras_pedidos').insert([pedidoData]).select().single();
+                if (error) throw error;
+                pedidoId = data.id;
+            }
+
+            if (formItens.length > 0 && pedidoId) {
+                const itensToInsert = formItens.map(item => ({
+                    pedido_id: pedidoId,
+                    material_id: item.material_id || null,
+                    material_nome: item.material_nome,
+                    quantidade: item.quantidade,
+                    unidade: item.unidade,
+                    valor_unitario: item.valor_unitario
+                }));
+                const { error: itemError } = await supabase.from('compras_itens_pedido').insert(itensToInsert);
+                if (itemError) throw itemError;
+            }
+
+            toast.success(editingPedido ? 'Pedido atualizado' : 'Pedido criado');
+            setEditingPedido(null);
+            fetchPedidos();
+            setActiveTab('lista');
+        } catch (error) {
+            console.error(error);
+            toast.error('Erro ao salvar pedido');
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const getStatusBadge = (status: PedidoCompra['status']) => {
         const badges = {
@@ -91,7 +212,7 @@ const PedidosCompra: React.FC = () => {
 
     const pedidosFiltrados = pedidos.filter(p => {
         const matchSearch = p.numero.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            p.fornecedor.toLowerCase().includes(searchTerm.toLowerCase());
+            (p.fornecedor?.nome || '').toLowerCase().includes(searchTerm.toLowerCase());
         const matchStatus = filtroStatus === 'todos' || p.status === filtroStatus;
         return matchSearch && matchStatus;
     });
@@ -159,36 +280,36 @@ const PedidosCompra: React.FC = () => {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {pedidosFiltrados.map(pedido => (
+                                    {loading ? (
+                                        <tr><td colSpan={7} className="text-center py-4">Carregando...</td></tr>
+                                    ) : pedidosFiltrados.map(pedido => (
                                         <tr key={pedido.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
                                             <td className="py-4 px-4 text-sm font-medium text-black">{pedido.numero}</td>
-                                            <td className="py-4 px-4 text-sm text-gray-900">{pedido.fornecedor}</td>
+                                            <td className="py-4 px-4 text-sm text-gray-900">{pedido.fornecedor?.nome || '-'}</td>
                                             <td className="py-4 px-4 text-sm text-gray-600">
-                                                {new Date(pedido.data).toLocaleDateString('pt-BR')}
+                                                {new Date(pedido.data_pedido).toLocaleDateString('pt-BR')}
                                             </td>
                                             <td className="py-4 px-4 text-sm text-gray-600">
-                                                {new Date(pedido.dataEntrega).toLocaleDateString('pt-BR')}
+                                                {pedido.data_entrega ? new Date(pedido.data_entrega).toLocaleDateString('pt-BR') : '-'}
                                             </td>
                                             <td className="py-4 px-4 text-sm font-medium text-gray-900 text-right">
-                                                R$ {pedido.valorTotal.toFixed(2)}
+                                                R$ {pedido.valor_total.toFixed(2)}
                                             </td>
                                             <td className="py-4 px-4">
                                                 {getStatusBadge(pedido.status)}
                                             </td>
                                             <td className="py-4 px-4">
                                                 <div className="flex gap-2 justify-end">
-                                                    <button className="p-1.5 text-blue-600 hover:bg-blue-50 rounded transition-colors" title="Visualizar">
-                                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                                        </svg>
-                                                    </button>
-                                                    <button className="p-1.5 text-gray-600 hover:bg-gray-50 rounded transition-colors" title="Editar">
+                                                    <button
+                                                        onClick={() => handleEdit(pedido)}
+                                                        className="p-1.5 text-blue-600 hover:bg-blue-50 rounded transition-colors" title="Editar">
                                                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                                                         </svg>
                                                     </button>
-                                                    <button className="p-1.5 text-red-600 hover:bg-red-50 rounded transition-colors" title="Cancelar">
+                                                    <button
+                                                        onClick={() => handleDelete(pedido.id)}
+                                                        className="p-1.5 text-red-600 hover:bg-red-50 rounded transition-colors" title="Cancelar">
                                                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                                                         </svg>
@@ -201,7 +322,7 @@ const PedidosCompra: React.FC = () => {
                             </table>
                         </div>
 
-                        {pedidosFiltrados.length === 0 && (
+                        {!loading && pedidosFiltrados.length === 0 && (
                             <div className="text-center py-12">
                                 <p className="text-gray-500">Nenhum pedido encontrado</p>
                             </div>
@@ -213,11 +334,11 @@ const PedidosCompra: React.FC = () => {
                 return (
                     <div className="space-y-6">
                         <div>
-                            <h2 className="text-xl font-semibold text-black">Novo Pedido de Compra</h2>
-                            <p className="text-sm text-gray-500">Crie um novo pedido de compra</p>
+                            <h2 className="text-xl font-semibold text-black">{editingPedido ? 'Editar Pedido' : 'Novo Pedido de Compra'}</h2>
+                            <p className="text-sm text-gray-500">Crie ou edite um pedido de compra</p>
                         </div>
 
-                        <form className="space-y-6">
+                        <form onSubmit={handleSubmit} className="space-y-6">
                             {/* Informações do Pedido */}
                             <div className="space-y-4">
                                 <h3 className="text-sm font-semibold text-gray-900 uppercase">Informações do Pedido</h3>
@@ -227,8 +348,8 @@ const PedidosCompra: React.FC = () => {
                                         <label className="block text-sm font-medium text-gray-700 mb-1">Número do Pedido</label>
                                         <input
                                             type="text"
-                                            defaultValue="PC-004"
-                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                                            value={formData.numero}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 focus:ring-2 focus:ring-green-500 focus:border-transparent"
                                             readOnly
                                         />
                                     </div>
@@ -236,7 +357,8 @@ const PedidosCompra: React.FC = () => {
                                         <label className="block text-sm font-medium text-gray-700 mb-1">Data do Pedido</label>
                                         <input
                                             type="date"
-                                            defaultValue={new Date().toISOString().split('T')[0]}
+                                            value={formData.data_pedido}
+                                            onChange={e => setFormData({ ...formData, data_pedido: e.target.value })}
                                             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                                         />
                                     </div>
@@ -244,6 +366,8 @@ const PedidosCompra: React.FC = () => {
                                         <label className="block text-sm font-medium text-gray-700 mb-1">Data de Entrega</label>
                                         <input
                                             type="date"
+                                            value={formData.data_entrega}
+                                            onChange={e => setFormData({ ...formData, data_entrega: e.target.value })}
                                             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                                         />
                                     </div>
@@ -251,11 +375,16 @@ const PedidosCompra: React.FC = () => {
 
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Fornecedor</label>
-                                    <select className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent">
-                                        <option>Selecione um fornecedor</option>
-                                        <option>Tecidos Ltda</option>
-                                        <option>Aviamentos Silva</option>
-                                        <option>Embalagens Premium</option>
+                                    <select
+                                        value={formData.fornecedor_id}
+                                        onChange={e => setFormData({ ...formData, fornecedor_id: e.target.value })}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                                        required
+                                    >
+                                        <option value="">Selecione um fornecedor</option>
+                                        {fornecedores.map(f => (
+                                            <option key={f.id} value={f.id}>{f.nome}</option>
+                                        ))}
                                     </select>
                                 </div>
                             </div>
@@ -266,6 +395,7 @@ const PedidosCompra: React.FC = () => {
                                     <h3 className="text-sm font-semibold text-gray-900 uppercase">Itens do Pedido</h3>
                                     <button
                                         type="button"
+                                        onClick={() => setFormItens([...formItens, { material_id: '', material_nome: '', quantidade: 1, unidade: 'un', valor_unitario: 0 }])}
                                         className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
                                     >
                                         + Adicionar Item
@@ -285,50 +415,108 @@ const PedidosCompra: React.FC = () => {
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            <tr className="border-t border-gray-200">
-                                                <td className="py-2 px-3">
-                                                    <input
-                                                        type="text"
-                                                        placeholder="Nome do material"
-                                                        className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
-                                                    />
-                                                </td>
-                                                <td className="py-2 px-3">
-                                                    <input
-                                                        type="number"
-                                                        placeholder="0"
-                                                        className="w-20 px-2 py-1 border border-gray-300 rounded text-sm"
-                                                    />
-                                                </td>
-                                                <td className="py-2 px-3">
-                                                    <select className="w-16 px-2 py-1 border border-gray-300 rounded text-sm">
-                                                        <option>m</option>
-                                                        <option>un</option>
-                                                        <option>kg</option>
-                                                    </select>
-                                                </td>
-                                                <td className="py-2 px-3">
-                                                    <input
-                                                        type="number"
-                                                        step="0.01"
-                                                        placeholder="0.00"
-                                                        className="w-24 px-2 py-1 border border-gray-300 rounded text-sm"
-                                                    />
-                                                </td>
-                                                <td className="py-2 px-3 text-sm font-medium">R$ 0.00</td>
-                                                <td className="py-2 px-3">
-                                                    <button type="button" className="text-red-600 hover:text-red-800">
-                                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                                        </svg>
-                                                    </button>
-                                                </td>
-                                            </tr>
+                                            {formItens.map((item, index) => (
+                                                <tr key={index} className="border-t border-gray-200">
+                                                    <td className="py-2 px-3">
+                                                        <select
+                                                            value={item.material_id || ''}
+                                                            onChange={e => {
+                                                                const selectedMat = materiais.find(m => m.id === e.target.value);
+                                                                const newItens = [...formItens];
+                                                                newItens[index].material_id = e.target.value;
+                                                                newItens[index].material_nome = selectedMat ? selectedMat.nome : '';
+                                                                if (selectedMat) {
+                                                                    newItens[index].unidade = selectedMat.unidade_compra || selectedMat.unidade_medida;
+                                                                    newItens[index].valor_unitario = selectedMat.preco_compra || selectedMat.custo_unitario;
+                                                                }
+                                                                setFormItens(newItens);
+                                                            }}
+                                                            className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                                                        >
+                                                            <option value="">Selecione um material</option>
+                                                            {materiais.map(m => (
+                                                                <option key={m.id} value={m.id}>{m.nome} ({m.unidade_medida})</option>
+                                                            ))}
+                                                        </select>
+                                                        {(!item.material_id) && (
+                                                            <input
+                                                                type="text"
+                                                                value={item.material_nome}
+                                                                onChange={e => {
+                                                                    const newItens = [...formItens];
+                                                                    newItens[index].material_nome = e.target.value;
+                                                                    setFormItens(newItens);
+                                                                }}
+                                                                placeholder="Ou digite o nome..."
+                                                                className="w-full px-2 py-1 mt-1 border border-gray-300 rounded text-sm bg-gray-50"
+                                                            />
+                                                        )}
+                                                    </td>
+                                                    <td className="py-2 px-3">
+                                                        <input
+                                                            type="number"
+                                                            value={item.quantidade}
+                                                            onChange={e => {
+                                                                const newItens = [...formItens];
+                                                                newItens[index].quantidade = Number(e.target.value);
+                                                                setFormItens(newItens);
+                                                            }}
+                                                            className="w-20 px-2 py-1 border border-gray-300 rounded text-sm"
+                                                            required
+                                                        />
+                                                    </td>
+                                                    <td className="py-2 px-3">
+                                                        <select
+                                                            value={item.unidade}
+                                                            onChange={e => {
+                                                                const newItens = [...formItens];
+                                                                newItens[index].unidade = e.target.value;
+                                                                setFormItens(newItens);
+                                                            }}
+                                                            className="w-16 px-2 py-1 border border-gray-300 rounded text-sm"
+                                                        >
+                                                            <option value="m">m</option>
+                                                            <option value="un">un</option>
+                                                            <option value="kg">kg</option>
+                                                        </select>
+                                                    </td>
+                                                    <td className="py-2 px-3">
+                                                        <input
+                                                            type="number"
+                                                            step="0.01"
+                                                            value={item.valor_unitario}
+                                                            onChange={e => {
+                                                                const newItens = [...formItens];
+                                                                newItens[index].valor_unitario = Number(e.target.value);
+                                                                setFormItens(newItens);
+                                                            }}
+                                                            className="w-24 px-2 py-1 border border-gray-300 rounded text-sm"
+                                                            required
+                                                        />
+                                                    </td>
+                                                    <td className="py-2 px-3 text-sm font-medium">
+                                                        R$ {(item.quantidade * item.valor_unitario).toFixed(2)}
+                                                    </td>
+                                                    <td className="py-2 px-3">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setFormItens(formItens.filter((_, i) => i !== index))}
+                                                            className="text-red-600 hover:text-red-800"
+                                                        >
+                                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                                            </svg>
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            ))}
                                         </tbody>
                                         <tfoot className="bg-gray-50 border-t-2 border-gray-300">
                                             <tr>
                                                 <td colSpan={4} className="py-2 px-3 text-sm font-semibold text-right">Valor Total:</td>
-                                                <td className="py-2 px-3 text-sm font-semibold text-green-600">R$ 0.00</td>
+                                                <td className="py-2 px-3 text-sm font-semibold text-green-600">
+                                                    R$ {formItens.reduce((acc, i) => acc + (i.quantidade * i.valor_unitario), 0).toFixed(2)}
+                                                </td>
                                                 <td></td>
                                             </tr>
                                         </tfoot>
@@ -341,6 +529,8 @@ const PedidosCompra: React.FC = () => {
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Observações</label>
                                 <textarea
                                     rows={3}
+                                    value={formData.observacoes}
+                                    onChange={e => setFormData({ ...formData, observacoes: e.target.value })}
                                     placeholder="Observações adicionais sobre o pedido..."
                                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                                 />
@@ -350,13 +540,17 @@ const PedidosCompra: React.FC = () => {
                             <div className="flex gap-3">
                                 <button
                                     type="submit"
-                                    className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium"
+                                    disabled={loading}
+                                    className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium disabled:opacity-50"
                                 >
-                                    Criar Pedido
+                                    {loading ? 'Salvando...' : (editingPedido ? 'Salvar Pedido' : 'Criar Pedido')}
                                 </button>
                                 <button
                                     type="button"
-                                    onClick={() => setActiveTab('lista')}
+                                    onClick={() => {
+                                        setEditingPedido(null);
+                                        setActiveTab('lista');
+                                    }}
                                     className="px-6 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-medium"
                                 >
                                     Cancelar
@@ -379,8 +573,8 @@ const PedidosCompra: React.FC = () => {
                                 key={tab.id}
                                 onClick={() => setActiveTab(tab.id)}
                                 className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === tab.id
-                                        ? 'border-green-600 text-green-600'
-                                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                                    ? 'border-green-600 text-green-600'
+                                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                                     }`}
                             >
                                 {tab.label}

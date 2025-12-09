@@ -1,24 +1,30 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Layout } from '../../components';
+import { supabase } from '../../integrations/supabase/client';
+import { toast } from 'sonner';
+import { useMateriais } from '../../hooks/useMateriais';
 
 type TabType = 'lista' | 'nova';
+
+interface ItemRequisicao {
+    id?: string;
+    material_id?: string;
+    material_nome: string;
+    quantidade: number;
+    unidade: string;
+    justificativa: string;
+}
 
 interface Requisicao {
     id: string;
     numero: string;
     solicitante: string;
     departamento: string;
-    dataSolicitacao: string;
-    dataNecess: string;
+    data_solicitacao: string;
+    data_necessidade: string;
     status: 'pendente' | 'aprovada' | 'rejeitada' | 'convertida';
     itens: ItemRequisicao[];
-}
-
-interface ItemRequisicao {
-    material: string;
-    quantidade: number;
-    unidade: string;
-    justificativa: string;
+    observacoes?: string;
 }
 
 const Requisicoes: React.FC = () => {
@@ -26,62 +32,190 @@ const Requisicoes: React.FC = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [filtroStatus, setFiltroStatus] = useState('todos');
     const [editingRequisicao, setEditingRequisicao] = useState<Requisicao | null>(null);
+    const [requisicoes, setRequisicoes] = useState<Requisicao[]>([]);
+    const [loading, setLoading] = useState(false);
+    const { materiais, fetchMateriais } = useMateriais();
 
-    const [requisicoes, setRequisicoes] = useState<Requisicao[]>([
-        {
-            id: '1',
-            numero: 'REQ-001',
-            solicitante: 'João Silva',
-            departamento: 'Produção',
-            dataSolicitacao: '2025-11-25',
-            dataNecess: '2025-12-05',
-            status: 'convertida',
-            itens: [
-                { material: 'Linho 100% 1,40m', quantidade: 40, unidade: 'm', justificativa: 'Produção de 20 batas' }
-            ]
-        },
-        {
-            id: '2',
-            numero: 'REQ-002',
-            solicitante: 'Maria Santos',
-            departamento: 'Produção',
-            dataSolicitacao: '2025-11-28',
-            dataNecess: '2025-12-10',
-            status: 'aprovada',
-            itens: [
-                { material: 'Botão madeira 12mm', quantidade: 100, unidade: 'un', justificativa: 'Reposição de estoque' },
-                { material: 'Linha poliéster', quantidade: 50, unidade: 'un', justificativa: 'Produção mensal' }
-            ]
-        },
-        {
-            id: '3',
-            numero: 'REQ-003',
-            solicitante: 'Pedro Costa',
-            departamento: 'Embalagem',
-            dataSolicitacao: '2025-12-02',
-            dataNecess: '2025-12-15',
-            status: 'pendente',
-            itens: [
-                { material: 'Caixa de papelão 30x30x20', quantidade: 200, unidade: 'un', justificativa: 'Envio de pedidos' }
-            ]
+    // Form state
+    const [formData, setFormData] = useState<Partial<Requisicao>>({
+        numero: '',
+        solicitante: '',
+        departamento: '',
+        data_necessidade: '',
+        observacoes: '',
+        status: 'pendente'
+    });
+    const [formItens, setFormItens] = useState<ItemRequisicao[]>([]);
+
+    useEffect(() => {
+        fetchRequisicoes();
+        fetchMateriais();
+    }, []);
+
+    useEffect(() => {
+        if (activeTab === 'nova' && !editingRequisicao) {
+            // New requisition
+            setFormData({
+                numero: `REQ-${Date.now()}`, // Simple auto-gen
+                solicitante: '',
+                departamento: '',
+                data_necessidade: new Date().toISOString().split('T')[0],
+                observacoes: '',
+                status: 'pendente'
+            });
+            setFormItens([{ material_id: '', material_nome: '', quantidade: 0, unidade: 'un', justificativa: '' }]);
+        } else if (activeTab === 'nova' && editingRequisicao) {
+            // Edit existing
+            setFormData({
+                numero: editingRequisicao.numero,
+                solicitante: editingRequisicao.solicitante,
+                departamento: editingRequisicao.departamento,
+                data_necessidade: editingRequisicao.data_necessidade,
+                observacoes: editingRequisicao.observacoes,
+                status: editingRequisicao.status
+            });
+            setFormItens(editingRequisicao.itens.map(i => ({
+                material_id: i.material_id,
+                material_nome: i.material_nome,
+                quantidade: i.quantidade,
+                unidade: i.unidade,
+                justificativa: i.justificativa
+            })));
         }
-    ]);
+    }, [activeTab, editingRequisicao]);
+
+    const fetchRequisicoes = async () => {
+        setLoading(true);
+        try {
+            const { data, error } = await supabase
+                .from('compras_requisicoes')
+                .select(`
+                    *,
+                    itens:compras_itens_requisicao(*)
+                `)
+                .order('created_at', { ascending: false });
+
+            if (error) throw error;
+
+            // Map keys if necessary, but we try to keep them aligned or handle snake_case
+            // Database returns snake_case, interfaces expect snake_case for data fields
+            // The select returns data_solicitacao, data_necessidade as strings
+            setRequisicoes(data as unknown as Requisicao[]);
+        } catch (error) {
+            console.error('Erro ao buscar requisições:', error);
+            toast.error('Erro ao carregar requisições');
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const handleEdit = (requisicao: Requisicao) => {
         setEditingRequisicao(requisicao);
         setActiveTab('nova');
     };
 
-    const handleDelete = (id: string) => {
-        if (window.confirm('Tem certeza que deseja excluir esta requisição?')) {
-            setRequisicoes(prev => prev.filter(r => r.id !== id));
+    const handleDelete = async (id: string) => {
+        if (!window.confirm('Tem certeza que deseja excluir esta requisição?')) return;
+
+        try {
+            const { error } = await supabase
+                .from('compras_requisicoes')
+                .delete()
+                .eq('id', id);
+
+            if (error) throw error;
+
+            toast.success('Requisição excluída com sucesso');
+            fetchRequisicoes();
+        } catch (error) {
+            console.error('Erro ao excluir:', error);
+            toast.error('Erro ao excluir requisição');
         }
     };
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleStatusChange = async (id: string, newStatus: Requisicao['status']) => {
+        try {
+            const { error } = await supabase
+                .from('compras_requisicoes')
+                .update({ status: newStatus })
+                .eq('id', id);
+
+            if (error) throw error;
+            toast.success(`Status atualizado para ${newStatus}`);
+            fetchRequisicoes();
+        } catch (error) {
+            console.error('Erro ao atualizar status:', error);
+            toast.error('Erro ao atualizar status');
+        }
+    }
+
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        setEditingRequisicao(null);
-        setActiveTab('lista');
+        setLoading(true);
+
+        try {
+            let reqId = editingRequisicao?.id;
+
+            const requisicaoData = {
+                numero: formData.numero,
+                solicitante: formData.solicitante,
+                departamento: formData.departamento,
+                data_necessidade: formData.data_necessidade,
+                observacoes: formData.observacoes,
+                status: formData.status || 'pendente'
+            };
+
+            if (editingRequisicao) {
+                // Update
+                const { error } = await supabase
+                    .from('compras_requisicoes')
+                    .update(requisicaoData)
+                    .eq('id', reqId);
+                if (error) throw error;
+
+                // Delete old items and insert new ones (simpler than diffing)
+                await supabase.from('compras_itens_requisicao').delete().eq('requisicao_id', reqId);
+            } else {
+                // Insert
+                const { data, error } = await supabase
+                    .from('compras_requisicoes')
+                    .insert([requisicaoData])
+                    .select()
+                    .single();
+
+                if (error) throw error;
+                reqId = data.id;
+            }
+
+            // Insert items
+            if (formItens.length > 0 && reqId) {
+                const itensToInsert = formItens.map(item => ({
+                    requisicao_id: reqId,
+                    material_id: item.material_id || null,
+                    material_nome: item.material_nome,
+                    quantidade: item.quantidade,
+                    unidade: item.unidade,
+                    justificativa: item.justificativa
+                }));
+
+                const { error: errorItens } = await supabase
+                    .from('compras_itens_requisicao')
+                    .insert(itensToInsert);
+
+                if (errorItens) throw errorItens;
+            }
+
+            toast.success(editingRequisicao ? 'Requisição atualizada!' : 'Requisição criada!');
+            setEditingRequisicao(null);
+            fetchRequisicoes();
+            setActiveTab('lista');
+
+        } catch (error) {
+            console.error('Erro ao salvar:', error);
+            toast.error('Erro ao salvar requisição');
+        } finally {
+            setLoading(false);
+        }
     };
 
     const getStatusBadge = (status: Requisicao['status']) => {
@@ -177,18 +311,21 @@ const Requisicoes: React.FC = () => {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {requisicoesFiltradas.map(req => (
+                                    {loading ? (
+                                        <tr><td colSpan={8} className="text-center py-4">Carregando...</td></tr>
+                                    ) : requisicoesFiltradas.map(req => (
                                         <tr key={req.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
                                             <td className="py-4 px-4 text-sm font-medium text-black">{req.numero}</td>
                                             <td className="py-4 px-4 text-sm text-gray-900">{req.solicitante}</td>
                                             <td className="py-4 px-4 text-sm text-gray-600">{req.departamento}</td>
                                             <td className="py-4 px-4 text-sm text-gray-600">
-                                                {new Date(req.dataSolicitacao).toLocaleDateString('pt-BR')}
+                                                {/* Use created_at as data_solicitacao fallback or actual field */}
+                                                {new Date(req.data_solicitacao || new Date()).toLocaleDateString('pt-BR')}
                                             </td>
                                             <td className="py-4 px-4 text-sm text-gray-600">
-                                                {new Date(req.dataNecess).toLocaleDateString('pt-BR')}
+                                                {req.data_necessidade ? new Date(req.data_necessidade).toLocaleDateString('pt-BR') : '-'}
                                             </td>
-                                            <td className="py-4 px-4 text-sm text-gray-600">{req.itens.length} item(ns)</td>
+                                            <td className="py-4 px-4 text-sm text-gray-600">{req.itens?.length || 0} item(ns)</td>
                                             <td className="py-4 px-4">
                                                 {getStatusBadge(req.status)}
                                             </td>
@@ -214,12 +351,16 @@ const Requisicoes: React.FC = () => {
                                                     </button>
                                                     {req.status === 'pendente' && (
                                                         <>
-                                                            <button className="p-1.5 text-green-600 hover:bg-green-50 rounded transition-colors" title="Aprovar">
+                                                            <button
+                                                                onClick={() => handleStatusChange(req.id, 'aprovada')}
+                                                                className="p-1.5 text-green-600 hover:bg-green-50 rounded transition-colors" title="Aprovar">
                                                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                                                                 </svg>
                                                             </button>
-                                                            <button className="p-1.5 text-red-600 hover:bg-red-50 rounded transition-colors" title="Rejeitar">
+                                                            <button
+                                                                onClick={() => handleStatusChange(req.id, 'rejeitada')}
+                                                                className="p-1.5 text-red-600 hover:bg-red-50 rounded transition-colors" title="Rejeitar">
                                                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                                                                 </svg>
@@ -227,7 +368,9 @@ const Requisicoes: React.FC = () => {
                                                         </>
                                                     )}
                                                     {req.status === 'aprovada' && (
-                                                        <button className="p-1.5 text-purple-600 hover:bg-purple-50 rounded transition-colors" title="Converter em Pedido">
+                                                        <button
+                                                            onClick={() => handleStatusChange(req.id, 'convertida')}
+                                                            className="p-1.5 text-purple-600 hover:bg-purple-50 rounded transition-colors" title="Converter em Pedido">
                                                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                                                             </svg>
@@ -241,7 +384,7 @@ const Requisicoes: React.FC = () => {
                             </table>
                         </div>
 
-                        {requisicoesFiltradas.length === 0 && (
+                        {!loading && requisicoesFiltradas.length === 0 && (
                             <div className="text-center py-12">
                                 <p className="text-gray-500">Nenhuma requisição encontrada</p>
                             </div>
@@ -273,8 +416,8 @@ const Requisicoes: React.FC = () => {
                                         <label className="block text-sm font-medium text-gray-700 mb-1">Número</label>
                                         <input
                                             type="text"
-                                            defaultValue={editingRequisicao?.numero || "REQ-004"}
-                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                                            value={formData.numero}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 focus:ring-2 focus:ring-green-500 focus:border-transparent"
                                             readOnly
                                         />
                                     </div>
@@ -282,8 +425,10 @@ const Requisicoes: React.FC = () => {
                                         <label className="block text-sm font-medium text-gray-700 mb-1">Data de Necessidade</label>
                                         <input
                                             type="date"
-                                            defaultValue={editingRequisicao?.dataNecess}
+                                            value={formData.data_necessidade}
+                                            onChange={e => setFormData({ ...formData, data_necessidade: e.target.value })}
                                             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                                            required
                                         />
                                     </div>
                                 </div>
@@ -293,22 +438,26 @@ const Requisicoes: React.FC = () => {
                                         <label className="block text-sm font-medium text-gray-700 mb-1">Solicitante</label>
                                         <input
                                             type="text"
-                                            defaultValue={editingRequisicao?.solicitante}
+                                            value={formData.solicitante}
+                                            onChange={e => setFormData({ ...formData, solicitante: e.target.value })}
                                             placeholder="Nome do solicitante"
                                             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                                            required
                                         />
                                     </div>
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-1">Departamento</label>
                                         <select
-                                            defaultValue={editingRequisicao?.departamento}
+                                            value={formData.departamento}
+                                            onChange={e => setFormData({ ...formData, departamento: e.target.value })}
                                             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                                            required
                                         >
-                                            <option>Selecione</option>
-                                            <option>Produção</option>
-                                            <option>Embalagem</option>
-                                            <option>Estoque</option>
-                                            <option>Administrativo</option>
+                                            <option value="">Selecione</option>
+                                            <option value="Produção">Produção</option>
+                                            <option value="Embalagem">Embalagem</option>
+                                            <option value="Estoque">Estoque</option>
+                                            <option value="Administrativo">Administrativo</option>
                                         </select>
                                     </div>
                                 </div>
@@ -320,6 +469,7 @@ const Requisicoes: React.FC = () => {
                                     <h3 className="text-sm font-semibold text-gray-900 uppercase">Itens Solicitados</h3>
                                     <button
                                         type="button"
+                                        onClick={() => setFormItens([...formItens, { material_id: '', material_nome: '', quantidade: 0, unidade: 'un', justificativa: '' }])}
                                         className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
                                     >
                                         + Adicionar Item
@@ -338,43 +488,96 @@ const Requisicoes: React.FC = () => {
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            <tr className="border-t border-gray-200">
-                                                <td className="py-2 px-3">
-                                                    <input
-                                                        type="text"
-                                                        placeholder="Nome do material"
-                                                        className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
-                                                    />
-                                                </td>
-                                                <td className="py-2 px-3">
-                                                    <input
-                                                        type="number"
-                                                        placeholder="0"
-                                                        className="w-20 px-2 py-1 border border-gray-300 rounded text-sm"
-                                                    />
-                                                </td>
-                                                <td className="py-2 px-3">
-                                                    <select className="w-16 px-2 py-1 border border-gray-300 rounded text-sm">
-                                                        <option>m</option>
-                                                        <option>un</option>
-                                                        <option>kg</option>
-                                                    </select>
-                                                </td>
-                                                <td className="py-2 px-3">
-                                                    <input
-                                                        type="text"
-                                                        placeholder="Motivo da solicitação"
-                                                        className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
-                                                    />
-                                                </td>
-                                                <td className="py-2 px-3">
-                                                    <button type="button" className="text-red-600 hover:text-red-800">
-                                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                                        </svg>
-                                                    </button>
-                                                </td>
-                                            </tr>
+                                            {formItens.map((item, index) => (
+                                                <tr key={index} className="border-t border-gray-200">
+                                                    <td className="py-2 px-3">
+                                                        <select
+                                                            value={item.material_id || ''}
+                                                            onChange={e => {
+                                                                const selectedMat = materiais.find(m => m.id === e.target.value);
+                                                                const newItens = [...formItens];
+                                                                newItens[index].material_id = e.target.value;
+                                                                newItens[index].material_nome = selectedMat ? selectedMat.nome : '';
+                                                                if (selectedMat) {
+                                                                    newItens[index].unidade = selectedMat.unidade_medida; // Requisitions usually use consumption unit
+                                                                }
+                                                                setFormItens(newItens);
+                                                            }}
+                                                            className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                                                        >
+                                                            <option value="">Selecione um material</option>
+                                                            {materiais.map(m => (
+                                                                <option key={m.id} value={m.id}>{m.nome} ({m.unidade_medida})</option>
+                                                            ))}
+                                                        </select>
+                                                        {(!item.material_id) && (
+                                                            <input
+                                                                type="text"
+                                                                value={item.material_nome}
+                                                                onChange={e => {
+                                                                    const newItens = [...formItens];
+                                                                    newItens[index].material_nome = e.target.value;
+                                                                    setFormItens(newItens);
+                                                                }}
+                                                                placeholder="Ou digite o nome..."
+                                                                className="w-full px-2 py-1 mt-1 border border-gray-300 rounded text-sm bg-gray-50"
+                                                            />
+                                                        )}
+                                                    </td>
+                                                    <td className="py-2 px-3">
+                                                        <input
+                                                            type="number"
+                                                            value={item.quantidade}
+                                                            onChange={e => {
+                                                                const newItens = [...formItens];
+                                                                newItens[index].quantidade = Number(e.target.value);
+                                                                setFormItens(newItens);
+                                                            }}
+                                                            className="w-20 px-2 py-1 border border-gray-300 rounded text-sm"
+                                                            required
+                                                        />
+                                                    </td>
+                                                    <td className="py-2 px-3">
+                                                        <select
+                                                            value={item.unidade}
+                                                            onChange={e => {
+                                                                const newItens = [...formItens];
+                                                                newItens[index].unidade = e.target.value;
+                                                                setFormItens(newItens);
+                                                            }}
+                                                            className="w-16 px-2 py-1 border border-gray-300 rounded text-sm"
+                                                        >
+                                                            <option value="m">m</option>
+                                                            <option value="un">un</option>
+                                                            <option value="kg">kg</option>
+                                                        </select>
+                                                    </td>
+                                                    <td className="py-2 px-3">
+                                                        <input
+                                                            type="text"
+                                                            value={item.justificativa}
+                                                            onChange={e => {
+                                                                const newItens = [...formItens];
+                                                                newItens[index].justificativa = e.target.value;
+                                                                setFormItens(newItens);
+                                                            }}
+                                                            placeholder="Motivo da solicitação"
+                                                            className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                                                        />
+                                                    </td>
+                                                    <td className="py-2 px-3">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setFormItens(formItens.filter((_, i) => i !== index))}
+                                                            className="text-red-600 hover:text-red-800"
+                                                        >
+                                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                                            </svg>
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            ))}
                                         </tbody>
                                     </table>
                                 </div>
@@ -385,6 +588,8 @@ const Requisicoes: React.FC = () => {
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Observações</label>
                                 <textarea
                                     rows={3}
+                                    value={formData.observacoes}
+                                    onChange={e => setFormData({ ...formData, observacoes: e.target.value })}
                                     placeholder="Informações adicionais sobre a requisição..."
                                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                                 />
@@ -394,9 +599,10 @@ const Requisicoes: React.FC = () => {
                             <div className="flex gap-3">
                                 <button
                                     type="submit"
-                                    className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium"
+                                    disabled={loading}
+                                    className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium disabled:opacity-50"
                                 >
-                                    {editingRequisicao ? 'Salvar Alterações' : 'Enviar Requisição'}
+                                    {loading ? 'Salvando...' : (editingRequisicao ? 'Salvar Alterações' : 'Enviar Requisição')}
                                 </button>
                                 <button
                                     type="button"

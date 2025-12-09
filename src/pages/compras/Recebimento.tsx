@@ -1,89 +1,218 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Layout } from '../../components';
+import { supabase } from '../../integrations/supabase/client';
+import { toast } from 'sonner';
 
 type TabType = 'lista' | 'novo';
+
+interface ItemRecebimento {
+    id?: string;
+    material_nome: string;
+    quantidade_pedida: number;
+    quantidade_recebida: number;
+    unidade: string;
+    valor_unitario: number;
+}
 
 interface Recebimento {
     id: string;
     numero: string;
-    pedidoCompra: string;
-    fornecedor: string;
-    dataRecebimento: string;
-    notaFiscal: string;
-    valorTotal: number;
+    pedido_id: string; // Foreign key
+    pedido?: { numero: string; fornecedor?: { nome: string } }; // Join info
+    nota_fiscal: string;
+    data_recebimento: string;
+    valor_total: number;
     status: 'pendente' | 'conferido' | 'finalizado';
     itens: ItemRecebimento[];
+    observacoes?: string;
 }
 
-interface ItemRecebimento {
-    material: string;
-    quantidadePedida: number;
-    quantidadeRecebida: number;
-    unidade: string;
-    valorUnitario: number;
+interface PedidoSimples {
+    id: string;
+    numero: string;
+    fornecedor?: { nome: string };
 }
 
 const Recebimento: React.FC = () => {
     const [activeTab, setActiveTab] = useState<TabType>('lista');
     const [searchTerm, setSearchTerm] = useState('');
     const [editingRecebimento, setEditingRecebimento] = useState<Recebimento | null>(null);
-    const [itensRecebimento, setItensRecebimento] = useState<ItemRecebimento[]>([
-        { material: 'Botão madeira 12mm', quantidadePedida: 100, quantidadeRecebida: 100, unidade: 'un', valorUnitario: 0.50 },
-        { material: 'Linha poliéster', quantidadePedida: 50, quantidadeRecebida: 50, unidade: 'un', valorUnitario: 2.00 }
-    ]);
+    const [recebimentos, setRecebimentos] = useState<Recebimento[]>([]);
+    const [pedidosDisponiveis, setPedidosDisponiveis] = useState<PedidoSimples[]>([]);
+    const [loading, setLoading] = useState(false);
 
-    const [recebimentos, setRecebimentos] = useState<Recebimento[]>([
-        {
-            id: '1',
-            numero: 'REC-001',
-            pedidoCompra: 'PC-001',
-            fornecedor: 'Tecidos Ltda',
-            dataRecebimento: '2025-12-05',
-            notaFiscal: 'NF-12345',
-            valorTotal: 2400.00,
-            status: 'finalizado',
-            itens: [
-                { material: 'Linho 100% 1,40m', quantidadePedida: 40, quantidadeRecebida: 40, unidade: 'm', valorUnitario: 60.00 }
-            ]
+    const [formData, setFormData] = useState<Partial<Recebimento>>({
+        numero: '',
+        pedido_id: '',
+        data_recebimento: new Date().toISOString().split('T')[0],
+        nota_fiscal: '',
+        observacoes: ''
+    });
+    const [itensRecebimento, setItensRecebimento] = useState<ItemRecebimento[]>([]);
+
+    useEffect(() => {
+        fetchRecebimentos();
+        fetchPedidosParaRecebimento();
+    }, []);
+
+    useEffect(() => {
+        if (activeTab === 'novo' && !editingRecebimento) {
+            setFormData({
+                numero: `REC-${Math.floor(Math.random() * 10000).toString().padStart(4, '0')}`,
+                pedido_id: '',
+                data_recebimento: new Date().toISOString().split('T')[0],
+                nota_fiscal: '',
+                observacoes: ''
+            });
+            setItensRecebimento([]);
+        } else if (activeTab === 'novo' && editingRecebimento) {
+            setFormData({
+                numero: editingRecebimento.numero,
+                pedido_id: editingRecebimento.pedido_id,
+                data_recebimento: editingRecebimento.data_recebimento,
+                nota_fiscal: editingRecebimento.nota_fiscal,
+                observacoes: editingRecebimento.observacoes
+            });
+            setItensRecebimento(editingRecebimento.itens.map(i => ({
+                material_nome: i.material_nome,
+                quantidade_pedida: i.quantidade_pedida,
+                quantidade_recebida: i.quantidade_recebida,
+                unidade: i.unidade,
+                valor_unitario: i.valor_unitario
+            })));
         }
-    ]);
+    }, [activeTab, editingRecebimento]);
 
-    const adicionarItem = () => {
-        setItensRecebimento([...itensRecebimento, {
-            material: '',
-            quantidadePedida: 0,
-            quantidadeRecebida: 0,
-            unidade: 'un',
-            valorUnitario: 0
-        }]);
+    const fetchRecebimentos = async () => {
+        setLoading(true);
+        try {
+            const { data, error } = await supabase
+                .from('compras_recebimentos')
+                .select(`
+                    *,
+                    pedido:compras_pedidos(numero, fornecedor:compras_fornecedores(nome)),
+                    itens:compras_itens_recebimento(*)
+                `)
+                .order('created_at', { ascending: false });
+
+            if (error) throw error;
+            setRecebimentos(data as unknown as Recebimento[]);
+        } catch (error) {
+            console.error(error);
+            toast.error('Erro ao buscar recebimentos');
+        } finally {
+            setLoading(false);
+        }
     };
 
-    const removerItem = (index: number) => {
-        if (itensRecebimento.length > 1) {
-            setItensRecebimento(itensRecebimento.filter((_, i) => i !== index));
+    const fetchPedidosParaRecebimento = async () => {
+        // Fetch orders that are NOT cancelled
+        const { data, error } = await supabase
+            .from('compras_pedidos')
+            .select('id, numero, fornecedor:compras_fornecedores(nome)')
+            .neq('status', 'cancelado')
+            .neq('status', 'recebido') // Ideally exclude fully received ones
+            .order('created_at', { ascending: false });
+
+        if (data) setPedidosDisponiveis(data as unknown as PedidoSimples[]);
+    };
+
+    const handlePedidoChange = async (pedidoId: string) => {
+        setFormData({ ...formData, pedido_id: pedidoId });
+        if (!pedidoId) {
+            setItensRecebimento([]);
+            return;
+        }
+
+        // Load items from the order
+        const { data, error } = await supabase
+            .from('compras_itens_pedido')
+            .select('*')
+            .eq('pedido_id', pedidoId);
+
+        if (data) {
+            const itensParaReceber = data.map(item => ({
+                material_nome: item.material_nome,
+                quantidade_pedida: item.quantidade,
+                quantidade_recebida: item.quantidade, // Default to full receipt
+                unidade: item.unidade,
+                valor_unitario: item.valor_unitario
+            }));
+            setItensRecebimento(itensParaReceber);
         }
     };
 
     const handleEdit = (recebimento: Recebimento) => {
         setEditingRecebimento(recebimento);
-        setItensRecebimento(recebimento.itens);
         setActiveTab('novo');
     };
 
-    const handleDelete = (id: string) => {
-        if (window.confirm('Tem certeza que deseja excluir este recebimento?')) {
-            setRecebimentos(prev => prev.filter(r => r.id !== id));
+    const handleDelete = async (id: string) => {
+        if (!window.confirm('Tem certeza que deseja excluir este recebimento?')) return;
+        try {
+            const { error } = await supabase.from('compras_recebimentos').delete().eq('id', id);
+            if (error) throw error;
+            toast.success('Recebimento excluído');
+            fetchRecebimentos();
+        } catch (error) {
+            console.error(error);
+            toast.error('Erro ao excluir recebimento');
         }
     };
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        setEditingRecebimento(null);
-        setItensRecebimento([
-            { material: 'Botão madeira 12mm', quantidadePedida: 100, quantidadeRecebida: 100, unidade: 'un', valorUnitario: 0.50 },
-            { material: 'Linha poliéster', quantidadePedida: 50, quantidadeRecebida: 50, unidade: 'un', valorUnitario: 2.00 }
-        ]);
-        setActiveTab('lista');
+        setLoading(true);
+        try {
+            let recebimentoId = editingRecebimento?.id;
+            const valorTotalRec = itensRecebimento.reduce((acc, i) => acc + (i.quantidade_recebida * i.valor_unitario), 0);
+
+            const recData = {
+                numero: formData.numero,
+                pedido_id: formData.pedido_id,
+                nota_fiscal: formData.nota_fiscal,
+                data_recebimento: formData.data_recebimento,
+                valor_total: valorTotalRec,
+                observacoes: formData.observacoes,
+                status: editingRecebimento ? editingRecebimento.status : 'pendente'
+            };
+
+            if (editingRecebimento) {
+                const { error } = await supabase.from('compras_recebimentos').update(recData).eq('id', recebimentoId);
+                if (error) throw error;
+                await supabase.from('compras_itens_recebimento').delete().eq('recebimento_id', recebimentoId);
+            } else {
+                const { data, error } = await supabase.from('compras_recebimentos').insert([recData]).select().single();
+                if (error) throw error;
+                recebimentoId = data.id;
+            }
+
+            if (itensRecebimento.length > 0 && recebimentoId) {
+                const itensToInsert = itensRecebimento.map(item => ({
+                    recebimento_id: recebimentoId,
+                    material_nome: item.material_nome,
+                    quantidade_pedida: item.quantidade_pedida,
+                    quantidade_recebida: item.quantidade_recebida,
+                    unidade: item.unidade,
+                    valor_unitario: item.valor_unitario
+                }));
+                const { error: itemError } = await supabase.from('compras_itens_recebimento').insert(itensToInsert);
+                if (itemError) throw itemError;
+            }
+
+            // If finalizing, maybe update order status? Keeping simple for now.
+
+            toast.success(editingRecebimento ? 'Recebimento atualizado' : 'Recebimento registrado');
+            setEditingRecebimento(null);
+            fetchRecebimentos();
+            setActiveTab('lista');
+
+        } catch (error) {
+            console.error(error);
+            toast.error('Erro ao salvar recebimento');
+        } finally {
+            setLoading(false);
+        }
     };
 
     const getStatusBadge = (status: Recebimento['status']) => {
@@ -106,8 +235,8 @@ const Recebimento: React.FC = () => {
 
     const recebimentosFiltrados = recebimentos.filter(r =>
         r.numero.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        r.pedidoCompra.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        r.fornecedor.toLowerCase().includes(searchTerm.toLowerCase())
+        (r.pedido?.numero || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (r.pedido?.fornecedor?.nome || '').toLowerCase().includes(searchTerm.toLowerCase())
     );
 
     const tabs = [
@@ -163,17 +292,19 @@ const Recebimento: React.FC = () => {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {recebimentosFiltrados.map(rec => (
+                                    {loading ? (
+                                        <tr><td colSpan={8} className="text-center py-4">Carregando...</td></tr>
+                                    ) : recebimentosFiltrados.map(rec => (
                                         <tr key={rec.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
                                             <td className="py-4 px-4 text-sm font-medium text-black">{rec.numero}</td>
-                                            <td className="py-4 px-4 text-sm text-gray-900">{rec.pedidoCompra}</td>
-                                            <td className="py-4 px-4 text-sm text-gray-900">{rec.fornecedor}</td>
+                                            <td className="py-4 px-4 text-sm text-gray-900">{rec.pedido?.numero || '-'}</td>
+                                            <td className="py-4 px-4 text-sm text-gray-900">{rec.pedido?.fornecedor?.nome || '-'}</td>
                                             <td className="py-4 px-4 text-sm text-gray-600">
-                                                {new Date(rec.dataRecebimento).toLocaleDateString('pt-BR')}
+                                                {new Date(rec.data_recebimento).toLocaleDateString('pt-BR')}
                                             </td>
-                                            <td className="py-4 px-4 text-sm text-gray-600">{rec.notaFiscal}</td>
+                                            <td className="py-4 px-4 text-sm text-gray-600">{rec.nota_fiscal}</td>
                                             <td className="py-4 px-4 text-sm font-medium text-gray-900 text-right">
-                                                R$ {rec.valorTotal.toFixed(2)}
+                                                R$ {rec.valor_total.toFixed(2)}
                                             </td>
                                             <td className="py-4 px-4">
                                                 {getStatusBadge(rec.status)}
@@ -206,7 +337,7 @@ const Recebimento: React.FC = () => {
                             </table>
                         </div>
 
-                        {recebimentosFiltrados.length === 0 && (
+                        {!loading && recebimentosFiltrados.length === 0 && (
                             <div className="text-center py-12">
                                 <p className="text-gray-500">Nenhum recebimento encontrado</p>
                             </div>
@@ -238,8 +369,8 @@ const Recebimento: React.FC = () => {
                                         <label className="block text-sm font-medium text-gray-700 mb-1">Número do Recebimento</label>
                                         <input
                                             type="text"
-                                            defaultValue={editingRecebimento?.numero || "REC-002"}
-                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                                            value={formData.numero}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 focus:ring-2 focus:ring-green-500 focus:border-transparent"
                                             readOnly
                                         />
                                     </div>
@@ -247,7 +378,8 @@ const Recebimento: React.FC = () => {
                                         <label className="block text-sm font-medium text-gray-700 mb-1">Data de Recebimento</label>
                                         <input
                                             type="date"
-                                            defaultValue={editingRecebimento?.dataRecebimento || new Date().toISOString().split('T')[0]}
+                                            value={formData.data_recebimento}
+                                            onChange={e => setFormData({ ...formData, data_recebimento: e.target.value })}
                                             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                                         />
                                     </div>
@@ -256,17 +388,23 @@ const Recebimento: React.FC = () => {
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-1">Pedido de Compra</label>
-                                        <select className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent">
-                                            <option>Selecione um pedido</option>
-                                            <option>PC-002 - Aviamentos Silva</option>
-                                            <option>PC-003 - Embalagens Premium</option>
+                                        <select
+                                            value={formData.pedido_id}
+                                            onChange={e => handlePedidoChange(e.target.value)}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                                        >
+                                            <option value="">Selecione um pedido</option>
+                                            {pedidosDisponiveis.map(p => (
+                                                <option key={p.id} value={p.id}>{p.numero} - {p.fornecedor?.nome}</option>
+                                            ))}
                                         </select>
                                     </div>
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-1">Nota Fiscal</label>
                                         <input
                                             type="text"
-                                            defaultValue={editingRecebimento?.notaFiscal}
+                                            value={formData.nota_fiscal}
+                                            onChange={e => setFormData({ ...formData, nota_fiscal: e.target.value })}
                                             placeholder="Número da NF"
                                             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                                         />
@@ -280,7 +418,7 @@ const Recebimento: React.FC = () => {
                                     <h3 className="text-sm font-semibold text-gray-900 uppercase">Itens Recebidos</h3>
                                     <button
                                         type="button"
-                                        onClick={adicionarItem}
+                                        onClick={() => setItensRecebimento([...itensRecebimento, { material_nome: '', quantidade_pedida: 0, quantidade_recebida: 0, unidade: 'un', valor_unitario: 0 }])}
                                         className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
                                     >
                                         + Adicionar Item
@@ -289,12 +427,8 @@ const Recebimento: React.FC = () => {
 
                                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                                     <p className="text-sm text-blue-800">
-                                        <strong>Importante:</strong> Ao finalizar o recebimento, os itens serão automaticamente:
+                                        <strong>Importante:</strong> Ao finalizar o recebimento, os itens serão automaticamente contabilizados.
                                     </p>
-                                    <ul className="mt-2 text-sm text-blue-700 list-disc list-inside">
-                                        <li>Adicionados ao estoque</li>
-                                        <li>Vinculados a uma conta a pagar no financeiro</li>
-                                    </ul>
                                 </div>
 
                                 <div className="border border-gray-200 rounded-lg overflow-hidden">
@@ -316,11 +450,11 @@ const Recebimento: React.FC = () => {
                                                     <td className="py-2 px-3">
                                                         <input
                                                             type="text"
-                                                            value={item.material}
-                                                            onChange={(e) => {
-                                                                const novosItens = [...itensRecebimento];
-                                                                novosItens[index].material = e.target.value;
-                                                                setItensRecebimento(novosItens);
+                                                            value={item.material_nome}
+                                                            onChange={e => {
+                                                                const newItens = [...itensRecebimento];
+                                                                newItens[index].material_nome = e.target.value;
+                                                                setItensRecebimento(newItens);
                                                             }}
                                                             placeholder="Nome do material"
                                                             className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
@@ -329,23 +463,19 @@ const Recebimento: React.FC = () => {
                                                     <td className="py-2 px-3">
                                                         <input
                                                             type="number"
-                                                            value={item.quantidadePedida}
-                                                            onChange={(e) => {
-                                                                const novosItens = [...itensRecebimento];
-                                                                novosItens[index].quantidadePedida = Number(e.target.value);
-                                                                setItensRecebimento(novosItens);
-                                                            }}
-                                                            className="w-20 px-2 py-1 border border-gray-300 rounded text-sm"
+                                                            value={item.quantidade_pedida}
+                                                            readOnly
+                                                            className="w-20 px-2 py-1 border border-gray-300 rounded text-sm bg-gray-50"
                                                         />
                                                     </td>
                                                     <td className="py-2 px-3">
                                                         <input
                                                             type="number"
-                                                            value={item.quantidadeRecebida}
-                                                            onChange={(e) => {
-                                                                const novosItens = [...itensRecebimento];
-                                                                novosItens[index].quantidadeRecebida = Number(e.target.value);
-                                                                setItensRecebimento(novosItens);
+                                                            value={item.quantidade_recebida}
+                                                            onChange={e => {
+                                                                const newItens = [...itensRecebimento];
+                                                                newItens[index].quantidade_recebida = Number(e.target.value);
+                                                                setItensRecebimento(newItens);
                                                             }}
                                                             className="w-20 px-2 py-1 border border-gray-300 rounded text-sm"
                                                         />
@@ -353,38 +483,38 @@ const Recebimento: React.FC = () => {
                                                     <td className="py-2 px-3">
                                                         <select
                                                             value={item.unidade}
-                                                            onChange={(e) => {
-                                                                const novosItens = [...itensRecebimento];
-                                                                novosItens[index].unidade = e.target.value;
-                                                                setItensRecebimento(novosItens);
+                                                            onChange={e => {
+                                                                const newItens = [...itensRecebimento];
+                                                                newItens[index].unidade = e.target.value;
+                                                                setItensRecebimento(newItens);
                                                             }}
                                                             className="w-16 px-2 py-1 border border-gray-300 rounded text-sm"
                                                         >
-                                                            <option>m</option>
-                                                            <option>un</option>
-                                                            <option>kg</option>
+                                                            <option value="m">m</option>
+                                                            <option value="un">un</option>
+                                                            <option value="kg">kg</option>
                                                         </select>
                                                     </td>
                                                     <td className="py-2 px-3">
                                                         <input
                                                             type="number"
                                                             step="0.01"
-                                                            value={item.valorUnitario}
-                                                            onChange={(e) => {
-                                                                const novosItens = [...itensRecebimento];
-                                                                novosItens[index].valorUnitario = Number(e.target.value);
-                                                                setItensRecebimento(novosItens);
+                                                            value={item.valor_unitario}
+                                                            onChange={e => {
+                                                                const newItens = [...itensRecebimento];
+                                                                newItens[index].valor_unitario = Number(e.target.value);
+                                                                setItensRecebimento(newItens);
                                                             }}
                                                             className="w-24 px-2 py-1 border border-gray-300 rounded text-sm"
                                                         />
                                                     </td>
                                                     <td className="py-2 px-3 text-sm font-medium">
-                                                        R$ {(item.quantidadeRecebida * item.valorUnitario).toFixed(2)}
+                                                        R$ {(item.quantidade_recebida * item.valor_unitario).toFixed(2)}
                                                     </td>
                                                     <td className="py-2 px-3">
                                                         <button
                                                             type="button"
-                                                            onClick={() => removerItem(index)}
+                                                            onClick={() => setItensRecebimento(itensRecebimento.filter((_, i) => i !== index))}
                                                             className="text-red-600 hover:text-red-800"
                                                         >
                                                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -399,7 +529,7 @@ const Recebimento: React.FC = () => {
                                             <tr>
                                                 <td colSpan={5} className="py-2 px-3 text-sm font-semibold text-right">Valor Total:</td>
                                                 <td className="py-2 px-3 text-sm font-semibold text-green-600">
-                                                    R$ {itensRecebimento.reduce((total, item) => total + (item.quantidadeRecebida * item.valorUnitario), 0).toFixed(2)}
+                                                    R$ {itensRecebimento.reduce((acc, i) => acc + (i.quantidade_recebida * i.valor_unitario), 0).toFixed(2)}
                                                 </td>
                                                 <td></td>
                                             </tr>
@@ -413,6 +543,8 @@ const Recebimento: React.FC = () => {
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Observações</label>
                                 <textarea
                                     rows={3}
+                                    value={formData.observacoes}
+                                    onChange={e => setFormData({ ...formData, observacoes: e.target.value })}
                                     placeholder="Observações sobre o recebimento (divergências, avarias, etc)..."
                                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                                 />
@@ -422,9 +554,10 @@ const Recebimento: React.FC = () => {
                             <div className="flex gap-3">
                                 <button
                                     type="submit"
-                                    className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium"
+                                    disabled={loading}
+                                    className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium disabled:opacity-50"
                                 >
-                                    {editingRecebimento ? 'Salvar Alterações' : 'Finalizar Recebimento'}
+                                    {loading ? 'Salvando...' : (editingRecebimento ? 'Salvar Alterações' : 'Finalizar Recebimento')}
                                 </button>
                                 <button
                                     type="button"

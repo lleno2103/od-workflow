@@ -8,7 +8,7 @@ const supabaseAny = supabase as any;
 export interface Material {
     id: string;
     nome: string;
-    tipo: string; // Tecido, Aviamento, Embalagem
+    tipo: string;
     codigo: string;
     unidade_medida: string;
     custo_unitario: number;
@@ -17,6 +17,22 @@ export interface Material {
     cor?: string;
     foto?: string;
     ativo: boolean;
+    // New fields
+    descricao_curta?: string;
+    detalhes?: Record<string, any>;
+    unidade_compra?: string;
+    preco_compra?: number;
+    qtd_por_unidade_compra?: number;
+    local_armazenamento?: string;
+    fornecedor_nome?: string;
+    fornecedor_cnpj?: string;
+    fornecedor_contato?: string;
+    fornecedor_link?: string;
+    fornecedor_prazo?: string;
+    fornecedor_pagamento?: string;
+    observacoes_uso?: string;
+    rendimento_medio?: string;
+    perdas_estimadas?: number;
     created_at?: string;
     updated_at?: string;
 }
@@ -32,6 +48,22 @@ export interface MaterialInput {
     cor?: string;
     foto?: string;
     ativo?: boolean;
+    // New fields
+    descricao_curta?: string;
+    detalhes?: Record<string, any>;
+    unidade_compra?: string;
+    preco_compra?: number;
+    qtd_por_unidade_compra?: number;
+    local_armazenamento?: string;
+    fornecedor_nome?: string;
+    fornecedor_cnpj?: string;
+    fornecedor_contato?: string;
+    fornecedor_link?: string;
+    fornecedor_prazo?: string;
+    fornecedor_pagamento?: string;
+    observacoes_uso?: string;
+    rendimento_medio?: string;
+    perdas_estimadas?: number;
 }
 
 export function useMateriais() {
