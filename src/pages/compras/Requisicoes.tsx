@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Layout } from '../../components';
 import { supabase } from '../../integrations/supabase/client';
 import { toast } from 'sonner';
+
+const supabaseAny = supabase as any;
 import { useMateriais } from '../../hooks/useMateriais';
 
 type TabType = 'lista' | 'nova';
@@ -87,7 +89,7 @@ const Requisicoes: React.FC = () => {
     const fetchRequisicoes = async () => {
         setLoading(true);
         try {
-            const { data, error } = await supabase
+            const { data, error } = await supabaseAny
                 .from('compras_requisicoes')
                 .select(`
                     *,
@@ -96,10 +98,6 @@ const Requisicoes: React.FC = () => {
                 .order('created_at', { ascending: false });
 
             if (error) throw error;
-
-            // Map keys if necessary, but we try to keep them aligned or handle snake_case
-            // Database returns snake_case, interfaces expect snake_case for data fields
-            // The select returns data_solicitacao, data_necessidade as strings
             setRequisicoes(data as unknown as Requisicao[]);
         } catch (error) {
             console.error('Erro ao buscar requisições:', error);
@@ -118,7 +116,7 @@ const Requisicoes: React.FC = () => {
         if (!window.confirm('Tem certeza que deseja excluir esta requisição?')) return;
 
         try {
-            const { error } = await supabase
+            const { error } = await supabaseAny
                 .from('compras_requisicoes')
                 .delete()
                 .eq('id', id);
@@ -135,7 +133,7 @@ const Requisicoes: React.FC = () => {
 
     const handleStatusChange = async (id: string, newStatus: Requisicao['status']) => {
         try {
-            const { error } = await supabase
+            const { error } = await supabaseAny
                 .from('compras_requisicoes')
                 .update({ status: newStatus })
                 .eq('id', id);
@@ -166,18 +164,15 @@ const Requisicoes: React.FC = () => {
             };
 
             if (editingRequisicao) {
-                // Update
-                const { error } = await supabase
+                const { error } = await supabaseAny
                     .from('compras_requisicoes')
                     .update(requisicaoData)
-                    .eq('id', reqId);
+                    .eq('id', reqId!);
                 if (error) throw error;
 
-                // Delete old items and insert new ones (simpler than diffing)
-                await supabase.from('compras_itens_requisicao').delete().eq('requisicao_id', reqId);
+                await supabaseAny.from('compras_itens_requisicao').delete().eq('requisicao_id', reqId!);
             } else {
-                // Insert
-                const { data, error } = await supabase
+                const { data, error } = await supabaseAny
                     .from('compras_requisicoes')
                     .insert([requisicaoData])
                     .select()
@@ -187,7 +182,6 @@ const Requisicoes: React.FC = () => {
                 reqId = data.id;
             }
 
-            // Insert items
             if (formItens.length > 0 && reqId) {
                 const itensToInsert = formItens.map(item => ({
                     requisicao_id: reqId,
@@ -198,7 +192,7 @@ const Requisicoes: React.FC = () => {
                     justificativa: item.justificativa
                 }));
 
-                const { error: errorItens } = await supabase
+                const { error: errorItens } = await supabaseAny
                     .from('compras_itens_requisicao')
                     .insert(itensToInsert);
 

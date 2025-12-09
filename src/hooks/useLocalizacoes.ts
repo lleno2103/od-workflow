@@ -31,13 +31,13 @@ export function useLocalizacoes() {
       const { data: mats } = await supabaseAny
         .from('materiais')
         .select('local_armazenamento');
-      const nomes = Array.from(new Set((mats || []).map((m: any) => m.local_armazenamento).filter((n: string | null) => n && n.trim())));
+      const nomes: string[] = Array.from(new Set((mats || []).map((m: any) => m.local_armazenamento).filter((n: string | null) => n && n.trim()))) as string[];
       const contagens: Record<string, number> = {};
       (mats || []).forEach((m: any) => {
         const n = m.local_armazenamento;
         if (n && n.trim()) contagens[n] = (contagens[n] || 0) + 1;
       });
-      setLocalizacoes(nomes.map(n => ({ nome: n, contagem: contagens[n] })));
+      setLocalizacoes(nomes.map((n: string) => ({ nome: n, contagem: contagens[n] })));
     } finally {
       setLoading(false);
     }

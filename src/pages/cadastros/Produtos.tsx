@@ -65,7 +65,7 @@ const Produtos: React.FC = () => {
     const [descricao, setDescricao] = useState('');
     const [categoriaId, setCategoriaId] = useState('');
     const [imagemPrincipal, setImagemPrincipal] = useState('');
-    const [imagemArquivo, setImagemArquivo] = useState<any | null>(null);
+    const [_imagemArquivo, setImagemArquivo] = useState<any | null>(null);
     const [imagemPreview, setImagemPreview] = useState<string>('');
 
     const [tamanhosSelecionados, setTamanhosSelecionados] = useState<string[]>(['M', 'G']);
