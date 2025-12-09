@@ -1,14 +1,51 @@
 import React, { useState, useEffect } from 'react';
+import { QRCodeSVG } from 'qrcode.react';
 import { Layout } from '../../components';
 import { useProdutos, type Produto, type Categoria, type Variante } from '../../hooks/useProdutos';
 
 const coresOdo = [
-    { nome: 'Branco', hex: '#FFFFFF', codigo: 'BRA' },
-    { nome: 'Verde Bandeira', hex: '#009739', codigo: 'VER' },
-    { nome: 'Vermelho', hex: '#E8112D', codigo: 'VRM' },
-    { nome: 'Azul Royal', hex: '#002776', codigo: 'AZU' },
-    { nome: 'Amarelo', hex: '#FFDF00', codigo: 'AMA' },
-    { nome: 'Preto', hex: '#000000', codigo: 'PRE' },
+    // MUITO CLARAS (Base / neutras)
+    { nome: 'Branco', hex: '#FFFFFF', codigo: 'BRA', grupo: 'MUITO CLARAS' },
+    { nome: 'Off white', hex: '#F8F9FA', codigo: 'OFF', grupo: 'MUITO CLARAS' },
+    { nome: 'Bege claro', hex: '#F5F5DC', codigo: 'BGC', grupo: 'MUITO CLARAS' },
+    { nome: 'Areia', hex: '#F4A460', codigo: 'ARE', grupo: 'MUITO CLARAS' },
+    { nome: 'Natural', hex: '#EAE0C8', codigo: 'NAT', grupo: 'MUITO CLARAS' },
+    { nome: 'Cinza claro', hex: '#D3D3D3', codigo: 'CIC', grupo: 'MUITO CLARAS' },
+    { nome: 'Azul bebê', hex: '#89CFF0', codigo: 'AZB', grupo: 'MUITO CLARAS' },
+    { nome: 'Rosa bebê', hex: '#F4C2C2', codigo: 'ROB', grupo: 'MUITO CLARAS' },
+    { nome: 'Verde água', hex: '#98FF98', codigo: 'VEA', grupo: 'MUITO CLARAS' },
+
+    // CLARAS (Tons suaves)
+    { nome: 'Azul acinzentado', hex: '#cad1d9', codigo: 'AZA', grupo: 'CLARAS' },
+    { nome: 'Azul hortência', hex: '#CEE7F0', codigo: 'AZH', grupo: 'CLARAS' },
+    { nome: 'Lavanda', hex: '#E6E6FA', codigo: 'LAV', grupo: 'CLARAS' },
+    { nome: 'Lilás lavanda', hex: '#B57EDC', codigo: 'LIL', grupo: 'CLARAS' },
+    { nome: 'Rosé', hex: '#FF69B4', codigo: 'RSE', grupo: 'CLARAS' }, // Approximate
+    { nome: 'Goiaba claro', hex: '#F27989', codigo: 'GOC', grupo: 'CLARAS' },
+    { nome: 'Caramelo', hex: '#C68E17', codigo: 'CAR', grupo: 'CLARAS' },
+    { nome: 'Nude', hex: '#EBC8B2', codigo: 'NUD', grupo: 'CLARAS' }, // Assuming 'Mude' was typo for 'Nude'
+
+    // MÉDIAS (Identidade / destaque)
+    { nome: 'Azul turquesa', hex: '#40E0D0', codigo: 'AZT', grupo: 'MÉDIAS' },
+
+    { nome: 'Coral', hex: '#FF7F50', codigo: 'COR', grupo: 'MÉDIAS' },
+    { nome: 'Laranja', hex: '#FFA500', codigo: 'LAR', grupo: 'MÉDIAS' },
+    { nome: 'Rosa chiclete', hex: '#FC6C85', codigo: 'ROC', grupo: 'MÉDIAS' },
+    { nome: 'Pink', hex: '#FFC0CB', codigo: 'PIN', grupo: 'MÉDIAS' },
+    { nome: 'Framboesa', hex: '#E91E63', codigo: 'FRA', grupo: 'MÉDIAS' },
+
+    // FORTES / INTENSAS (Impacto visual)
+    { nome: 'Vermelho', hex: '#FF0000', codigo: 'VER', grupo: 'FORTES' },
+    { nome: 'Catchup', hex: '#C21807', codigo: 'CAT', grupo: 'FORTES' },
+    { nome: 'Telha', hex: '#CD5700', codigo: 'TEL', grupo: 'FORTES' },
+    { nome: 'Verde bandeira', hex: '#008000', codigo: 'VEB', grupo: 'FORTES' },
+    { nome: 'Verde militar', hex: '#4B5320', codigo: 'VEM', grupo: 'FORTES' },
+    { nome: 'Azul Royal', hex: '#4169E1', codigo: 'AZR', grupo: 'FORTES' },
+
+    // ESCURAS (Base premium / noite)
+    { nome: 'Cinza escuro', hex: '#A9A9A9', codigo: 'CIE', grupo: 'ESCURAS' },
+    { nome: 'Azul acinzentado escuro', hex: '#466D85', codigo: 'AAE', grupo: 'ESCURAS' },
+    { nome: 'Preto', hex: '#000000', codigo: 'PRE', grupo: 'ESCURAS' },
 ];
 
 const tamanhos = ['PP', 'P', 'M', 'G', 'GG', 'XG'];
@@ -16,7 +53,7 @@ const tamanhos = ['PP', 'P', 'M', 'G', 'GG', 'XG'];
 type TabType = 'lista' | 'novo' | 'variantes' | 'novo-variante' | 'categorias';
 
 const Produtos: React.FC = () => {
-    const { produtos, categorias, variantes, loading, createProduto, updateProduto, deleteProduto, createCategoria, updateCategoria, deleteCategoria, createVariante, deleteVariante, fetchAll } = useProdutos();
+    const { produtos, categorias, variantes, loading, createProduto, updateProduto, deleteProduto, createCategoria, updateCategoria, deleteCategoria, createVariante, updateVariante, deleteVariante, fetchAll } = useProdutos();
     const [activeTab, setActiveTab] = useState<TabType>('lista');
     const [editingProduto, setEditingProduto] = useState<Produto | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
@@ -28,9 +65,9 @@ const Produtos: React.FC = () => {
     const [descricao, setDescricao] = useState('');
     const [categoriaId, setCategoriaId] = useState('');
     const [imagemPrincipal, setImagemPrincipal] = useState('');
-    const [imagemArquivo, setImagemArquivo] = useState<File | null>(null);
+    const [imagemArquivo, setImagemArquivo] = useState<any | null>(null);
     const [imagemPreview, setImagemPreview] = useState<string>('');
-    
+
     const [tamanhosSelecionados, setTamanhosSelecionados] = useState<string[]>(['M', 'G']);
     const [coresSelecionadas, setCoresSelecionadas] = useState<string[]>(['Verde Bandeira']);
     const [precoBase, setPrecoBase] = useState(0);
@@ -59,6 +96,7 @@ const Produtos: React.FC = () => {
     const [vaianteStatus, setVarianteStatus] = useState('Em estoque');
     const [vaianteObservacoes, setVarianteObservacoes] = useState('');
     const [vaianteEstoque, setVarianteEstoque] = useState(0);
+    const [editingVariante, setEditingVariante] = useState<Variante | null>(null);
 
     useEffect(() => {
         fetchAll();
@@ -67,17 +105,17 @@ const Produtos: React.FC = () => {
     // Gerar código automaticamente quando categoria muda
     const gerarCodigoProduto = (catId: string) => {
         if (!catId) return '';
-        
+
         const categoria = categorias.find(c => c.id === catId);
         if (!categoria) return '';
-        
-        const prefixo = categoria.nome.substring(0, 2).toUpperCase();
+
+        const prefixo = categoria.nome.substring(0, 3).toUpperCase();
         const ano = new Date().getFullYear();
-        
+
         // Contar produtos com o mesmo prefixo
         const produtosCategoria = produtos.filter(p => p.codigo.startsWith(prefixo));
         const proximo = String(produtosCategoria.length + 1).padStart(4, '0');
-        
+
         return `${prefixo}-${ano}${proximo}`;
     };
 
@@ -91,6 +129,12 @@ const Produtos: React.FC = () => {
             };
             reader.readAsDataURL(file);
         }
+    };
+
+    const handleRemoveImage = () => {
+        setImagemArquivo(null);
+        setImagemPreview('');
+        setImagemPrincipal('');
     };
 
     const handleCategoriaChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -110,6 +154,34 @@ const Produtos: React.FC = () => {
             setImagemPrincipal(editingProduto.imagem_principal || '');
             setImagemArquivo(null);
             setImagemPreview(editingProduto.imagem_principal || '');
+
+            // Populate variants data
+            const prodVariantes = variantes.filter(v => v.produto_id === editingProduto.id);
+            if (prodVariantes.length > 0) {
+                const uniqueSizes = Array.from(new Set(prodVariantes.map(v => v.tamanho)));
+                const uniqueColors = Array.from(new Set(prodVariantes.map(v => v.cor))); // Assuming 'cor' in variant matches 'nome' in coresOdo
+
+                // Filter to ensure we only set valid sizes/colors that match our predefined lists if needed, 
+                // but for now let's trust the data or mapped values.
+                setTamanhosSelecionados(uniqueSizes);
+                setCoresSelecionadas(uniqueColors);
+
+                const v = prodVariantes[0];
+                setPrecoBase(v.custo_producao);
+
+                if (v.custo_producao > 0) {
+                    const m = ((v.preco_venda - v.custo_producao) / v.custo_producao) * 100;
+                    setMargem(Math.round(m));
+                } else {
+                    setMargem(0);
+                }
+            } else {
+                // Default values if no variants exist yet
+                setTamanhosSelecionados(['M', 'G']);
+                setCoresSelecionadas(['Verde Bandeira']);
+                setPrecoBase(0);
+                setMargem(150);
+            }
         } else {
             setCodigo('');
             setNome('');
@@ -118,15 +190,22 @@ const Produtos: React.FC = () => {
             setImagemPrincipal('');
             setImagemArquivo(null);
             setImagemPreview('');
+
+            setTamanhosSelecionados(['M', 'G']);
+            setCoresSelecionadas(['Verde Bandeira']);
+            setPrecoBase(0);
+            setMargem(150);
         }
-    }, [editingProduto]);
+    }, [editingProduto, variantes]);
 
     const handleSubmitProduto = async (e: React.FormEvent) => {
         e.preventDefault();
-        
+
         // Usar a imagem preview se arquivo foi selecionado, senão manter a imagem existente
         const imagemFinal = imagemPreview || imagemPrincipal;
-        
+
+        let produtoId = '';
+
         if (editingProduto) {
             const result = await updateProduto(editingProduto.id, {
                 codigo,
@@ -137,7 +216,9 @@ const Produtos: React.FC = () => {
                 ativo: true,
             });
             if (result) {
-                await fetchAll();
+                produtoId = editingProduto.id;
+            } else {
+                return; // Error updating
             }
         } else {
             const novoProduto = await createProduto({
@@ -148,17 +229,41 @@ const Produtos: React.FC = () => {
                 imagem_principal: imagemFinal,
                 ativo: true,
             });
-            
-            // Criar variantes se foi novo produto
             if (novoProduto) {
-                for (const tamanho of tamanhosSelecionados) {
-                    for (const corNome of coresSelecionadas) {
-                        const corObj = coresOdo.find(c => c.nome === corNome);
+                produtoId = novoProduto.id;
+            } else {
+                return; // Error creating
+            }
+        }
+
+        // Handle Variants (Create new or Update existing)
+        if (produtoId) {
+            const precoVenda = calcularPrecoSugerido();
+
+            for (const tamanho of tamanhosSelecionados) {
+                for (const corNome of coresSelecionadas) {
+                    const corObj = coresOdo.find(c => c.nome === corNome);
+
+                    // Check if variant already exists
+                    const existingVariant = variantes.find(v =>
+                        v.produto_id === produtoId &&
+                        v.tamanho === tamanho &&
+                        v.cor === corNome
+                    );
+
+                    if (existingVariant) {
+                        // Update existing variant price/cost
+                        await updateVariante(existingVariant.id, {
+                            custo_producao: precoBase,
+                            preco_venda: precoVenda,
+                            // We don't overwrite SKU to preserve it
+                        });
+                    } else {
+                        // Create new variant
                         const sku = `${codigo}-${tamanho}-${corObj?.codigo}`;
-                        const precoVenda = calcularPrecoSugerido();
-                        
+
                         await createVariante({
-                            produto_id: novoProduto.id,
+                            produto_id: produtoId,
                             sku,
                             tamanho,
                             cor: corNome,
@@ -169,10 +274,10 @@ const Produtos: React.FC = () => {
                         });
                     }
                 }
-                await fetchAll();
             }
+            await fetchAll();
         }
-        
+
         resetFormProduto();
         setActiveTab('lista');
     };
@@ -187,7 +292,7 @@ const Produtos: React.FC = () => {
         setImagemPreview('');
         setEditingProduto(null);
         setTamanhosSelecionados(['M', 'G']);
-        setCoresSelecionadas(['Verde Bandeira']);
+        setCoresSelecionadas(['Branco']);
         setPrecoBase(0);
         setMargem(150);
     };
@@ -217,7 +322,7 @@ const Produtos: React.FC = () => {
 
     const handleSaveCategoria = async (e: React.FormEvent) => {
         e.preventDefault();
-        
+
         if (editingCategoria) {
             const result = await updateCategoria(editingCategoria.id, categoriaNome, categoriaDescricao);
             if (result) {
@@ -229,7 +334,7 @@ const Produtos: React.FC = () => {
                 await fetchAll();
             }
         }
-        
+
         setCategoriaNome('');
         setCategoriaDescricao('');
         setShowCategoriaForm(false);
@@ -256,8 +361,9 @@ const Produtos: React.FC = () => {
     const resetFormVariante = () => {
         setVarianteProdutoId('');
         setVarianteTamanho('M');
-        setVarianteCor('Verde Bandeira');
-        setVarianteTipoTecido('Tricoline');
+        setVarianteTamanho('M');
+        setVarianteCor('Branco');
+        setVarianteTipoTecido('Linho');
         setVarianteComprimento('');
         setVarianteModelagem('Tradicional');
         setVarianteBordado('Sem bordado');
@@ -270,11 +376,33 @@ const Produtos: React.FC = () => {
         setVarianteStatus('Em estoque');
         setVarianteObservacoes('');
         setVarianteEstoque(0);
+        setEditingVariante(null);
+    };
+
+    const handleEditVariante = (variante: Variante) => {
+        setEditingVariante(variante);
+        setVarianteProdutoId(variante.produto_id);
+        setVarianteTamanho(variante.tamanho);
+        setVarianteCor(variante.cor); // Assuming cor name
+        setVariantePreco(variante.preco_venda);
+        setVarianteCustoTotal(variante.custo_producao);
+        setVarianteEstoque(variante.estoque);
+
+        // Tentativa de extrair dados do SKU (ODO-COD-TAM-COR-TEC-BOR)
+        // Ex: ODO-BA20250001-M-VER-TRI-S
+        const parts = variante.sku.split('-');
+        if (parts.length >= 6) {
+            // Tecido (TRI)
+            // Mapeamento simples reverso se necessário, ou deixar padrão
+            // Bordado (S/C)
+        }
+
+        setActiveTab('novo-variante');
     };
 
     const handleSubmitVariante = async (e: React.FormEvent) => {
         e.preventDefault();
-        
+
         if (!varianteProdutoId) {
             alert('Selecione um produto');
             return;
@@ -285,20 +413,38 @@ const Produtos: React.FC = () => {
 
         const sku = gerarSKUVariante(produto);
 
-        const result = await createVariante({
-            produto_id: varianteProdutoId,
-            sku,
-            tamanho: varianteTamanho,
-            cor: varianteCor,
-            preco_venda: vaiantePreco,
-            custo_producao: varianteCustoTotal,
-            estoque: vaianteEstoque,
-            ativo: true,
-        });
-        if (result) {
-            await fetchAll();
-            resetFormVariante();
-            setActiveTab('variantes');
+        if (editingVariante) {
+            const result = await updateVariante(editingVariante.id, {
+                produto_id: varianteProdutoId,
+                sku,
+                tamanho: varianteTamanho,
+                cor: varianteCor,
+                preco_venda: vaiantePreco,
+                custo_producao: varianteCustoTotal,
+                estoque: vaianteEstoque,
+                ativo: true,
+            });
+            if (result) {
+                await fetchAll();
+                resetFormVariante();
+                setActiveTab('variantes');
+            }
+        } else {
+            const result = await createVariante({
+                produto_id: varianteProdutoId,
+                sku,
+                tamanho: varianteTamanho,
+                cor: varianteCor,
+                preco_venda: vaiantePreco,
+                custo_producao: varianteCustoTotal,
+                estoque: vaianteEstoque,
+                ativo: true,
+            });
+            if (result) {
+                await fetchAll();
+                resetFormVariante();
+                setActiveTab('variantes');
+            }
         }
     };
 
@@ -312,11 +458,11 @@ const Produtos: React.FC = () => {
     const produtosFiltrados = produtos.filter(produto => {
         const matchSearch = produto.codigo.toLowerCase().includes(searchTerm.toLowerCase()) ||
             produto.nome.toLowerCase().includes(searchTerm.toLowerCase());
-        
-        const matchCategoria = filtroCategoria === 'todas' || 
+
+        const matchCategoria = filtroCategoria === 'todas' ||
             produto.categoria_id === filtroCategoria ||
             (filtroCategoria === 'sem-categoria' && !produto.categoria_id);
-        
+
         return matchSearch && matchCategoria;
     });
 
@@ -380,8 +526,9 @@ const Produtos: React.FC = () => {
                                 <thead>
                                     <tr className="border-b border-gray-200">
                                         <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600 uppercase">Código</th>
+                                        <th className="text-center py-3 px-4 text-xs font-semibold text-gray-600 uppercase">QR</th>
                                         <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600 uppercase">Nome</th>
-                                        <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600 uppercase">Imagem</th>
+                                        <th className="text-center py-3 px-4 text-xs font-semibold text-gray-600 uppercase">Imagem</th>
                                         <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600 uppercase">Categoria</th>
                                         <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600 uppercase">Descrição</th>
                                         <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600 uppercase">Variantes</th>
@@ -396,8 +543,23 @@ const Produtos: React.FC = () => {
                                         return (
                                             <tr key={produto.id} className="border-b border-gray-100 hover:bg-gray-50">
                                                 <td className="py-3 px-4 text-sm font-medium text-black">{produto.codigo}</td>
+                                                <td className="py-3 px-4 text-center">
+                                                    <div className="flex justify-center">
+                                                        <QRCodeSVG value={produto.codigo} size={24} level="L" />
+                                                    </div>
+                                                </td>
                                                 <td className="py-3 px-4 text-sm text-gray-900 font-medium">{produto.nome}</td>
-                                                <td className="py-3 px-4 text-sm text-center text-2xl">{produto.imagem_principal || '📷'}</td>
+                                                <td className="py-3 px-4 text-center">
+                                                    {produto.imagem_principal ? (
+                                                        <img
+                                                            src={produto.imagem_principal}
+                                                            alt={produto.nome}
+                                                            className="w-10 h-10 object-cover rounded mx-auto border border-gray-200"
+                                                        />
+                                                    ) : (
+                                                        <span className="text-2xl" role="img" aria-label="sem imagem">📷</span>
+                                                    )}
+                                                </td>
                                                 <td className="py-3 px-4">
                                                     {categoriaInfo ? (
                                                         <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs font-medium">
@@ -469,18 +631,30 @@ const Produtos: React.FC = () => {
                                 <h3 className="text-sm font-semibold text-gray-900 uppercase">Informações Básicas</h3>
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">Código do Produto *</label>
-                                        <input
-                                            type="text"
-                                            value={codigo}
-                                            onChange={(e) => setCodigo(e.target.value)}
-                                            placeholder="Ex: BAT-20250001"
-                                            required
-                                            disabled={!editingProduto}
-                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent disabled:bg-gray-100 disabled:text-gray-600"
-                                        />
-                                        {!editingProduto && <p className="text-xs text-gray-500 mt-1">Gerado automaticamente</p>}
+                                    <div className="flex gap-4">
+                                        <div className="flex flex-col items-center justify-center p-2 border border-gray-200 rounded-lg bg-white">
+                                            {codigo ? (
+                                                <QRCodeSVG value={codigo} size={64} level="L" />
+                                            ) : (
+                                                <div className="w-16 h-16 bg-gray-100 rounded flex items-center justify-center text-xs text-gray-400 text-center">
+                                                    QR Code
+                                                </div>
+                                            )}
+                                            <span className="text-[10px] text-gray-500 mt-1 font-mono">{codigo || '---'}</span>
+                                        </div>
+                                        <div className="flex-1">
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">Código do Produto *</label>
+                                            <input
+                                                type="text"
+                                                value={codigo}
+                                                onChange={(e) => setCodigo(e.target.value)}
+                                                placeholder="Ex: BAT-20250001"
+                                                required
+                                                disabled={!editingProduto}
+                                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent disabled:bg-gray-100 disabled:text-gray-600"
+                                            />
+                                            {!editingProduto && <p className="text-xs text-gray-500 mt-1">Gerado automaticamente</p>}
+                                        </div>
                                     </div>
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-1">Categoria *</label>
@@ -523,25 +697,42 @@ const Produtos: React.FC = () => {
                                 </div>
                             </div>
                             {/* Imagem */}
+                            {/* Imagem */}
                             <div className="space-y-4">
-                                <h3 className="text-sm font-semibold text-gray-900 uppercase">Imagem do Produto</h3>
-                                <div className="flex items-center gap-4">
-                                    <div className="w-32 h-32 bg-gray-200 rounded-lg flex items-center justify-center border-2 border-gray-300 overflow-hidden">
-                                        {imagemPreview ? (
-                                            <img src={imagemPreview} alt="Preview" className="w-full h-full object-cover" />
-                                        ) : (
-                                            <span className="text-gray-400">Sem imagem</span>
-                                        )}
-                                    </div>
-                                    <div className="flex-1">
-                                        <p className="text-sm text-gray-600 mb-3">Faça upload de uma imagem para o produto</p>
-                                        <label className="flex items-center justify-center px-4 py-2 border-2 border-dashed border-gray-300 rounded-lg hover:border-green-500 hover:bg-green-50 cursor-pointer transition-colors">
-                                            <div className="text-center">
-                                                <svg className="w-5 h-5 mx-auto text-gray-400 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                                                </svg>
-                                                <span className="text-sm font-medium text-gray-600">Clique para fazer upload</span>
-                                            </div>
+                                <div className="flex justify-between items-center">
+                                    <h3 className="text-sm font-semibold text-gray-900 uppercase">Imagem do Produto</h3>
+                                    {imagemPreview && (
+                                        <button
+                                            type="button"
+                                            onClick={handleRemoveImage}
+                                            className="text-red-600 text-xs hover:text-red-700 flex items-center gap-1"
+                                        >
+                                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                            </svg>
+                                            Remover imagem
+                                        </button>
+                                    )}
+                                </div>
+
+                                <div className="flex gap-4">
+                                    <div className="relative group">
+                                        <label className="block w-32 h-32 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300 hover:border-green-500 hover:bg-green-50 flex-col items-center justify-center cursor-pointer transition-colors overflow-hidden relative">
+                                            {imagemPreview ? (
+                                                <>
+                                                    <img src={imagemPreview} alt="Preview" className="w-full h-full object-cover" />
+                                                    <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                                        <span className="text-white text-xs font-medium">Trocar Imagem</span>
+                                                    </div>
+                                                </>
+                                            ) : (
+                                                <div className="flex flex-col items-center justify-center h-full">
+                                                    <svg className="w-8 h-8 text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                                    </svg>
+                                                    <span className="text-xs text-gray-500 font-medium">Upload</span>
+                                                </div>
+                                            )}
                                             <input
                                                 type="file"
                                                 accept="image/*"
@@ -549,121 +740,141 @@ const Produtos: React.FC = () => {
                                                 className="hidden"
                                             />
                                         </label>
-                                        {imagemArquivo && (
-                                            <p className="text-xs text-gray-500 mt-2">Arquivo: {imagemArquivo.name}</p>
-                                        )}
+                                    </div>
+
+                                    <div className="flex-1 text-sm text-gray-500 py-2">
+                                        <p className="font-medium text-gray-900 mb-1">
+                                            {imagemPreview ? 'Imagem selecionada' : 'Adicionar imagem'}
+                                        </p>
+                                        <p className="max-w-xs">
+                                            Clique na área ao lado para {imagemPreview ? 'substituir' : 'adicionar'} a foto do produto.
+                                        </p>
+                                        <p className="text-xs mt-2 text-gray-400">JPG, PNG (Max. 5MB)</p>
                                     </div>
                                 </div>
                             </div>
 
-                            {!editingProduto && (
-                                <>
-                                    {/* Gerador de Variantes */}
-                                    <div className="space-y-4">
-                                        <h3 className="text-sm font-semibold text-gray-900 uppercase">Gerador de Variantes</h3>
+                            <div className="border-t pt-4">
+                                {/* Gerador de Variantes */}
+                                <div className="space-y-4">
+                                    <h3 className="text-sm font-semibold text-gray-900 uppercase">Gerador de Variantes</h3>
 
-                                        {/* Tamanhos */}
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-2">Tamanhos Disponíveis</label>
-                                            <div className="flex flex-wrap gap-2">
-                                                {tamanhos.map(tam => (
-                                                    <button
-                                                        key={tam}
-                                                        type="button"
-                                                        onClick={() => {
-                                                            setTamanhosSelecionados(prev =>
-                                                                prev.includes(tam) ? prev.filter(t => t !== tam) : [...prev, tam]
-                                                            );
-                                                        }}
-                                                        className={`px-4 py-2 rounded-lg border-2 font-medium transition-colors ${tamanhosSelecionados.includes(tam)
-                                                            ? 'border-green-600 bg-green-50 text-green-700'
-                                                            : 'border-gray-300 bg-white text-gray-700 hover:border-gray-400'
-                                                            }`}
-                                                    >
-                                                        {tam}
-                                                    </button>
-                                                ))}
-                                            </div>
-                                        </div>
-
-                                        {/* Cores */}
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-2">Cores Disponíveis</label>
-                                            <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                                                {coresOdo.map(cor => (
-                                                    <button
-                                                        key={cor.codigo}
-                                                        type="button"
-                                                        onClick={() => {
-                                                            setCoresSelecionadas(prev =>
-                                                                prev.includes(cor.nome) ? prev.filter(c => c !== cor.nome) : [...prev, cor.nome]
-                                                            );
-                                                        }}
-                                                        className={`flex items-center gap-2 px-3 py-2 rounded-lg border-2 transition-colors ${coresSelecionadas.includes(cor.nome)
-                                                            ? 'border-green-600 bg-green-50'
-                                                            : 'border-gray-300 bg-white hover:border-gray-400'
-                                                            }`}
-                                                    >
-                                                        <div
-                                                            className="w-6 h-6 rounded-full border-2 border-gray-300"
-                                                            style={{ backgroundColor: cor.hex }}
-                                                        />
-                                                        <span className="text-sm font-medium">{cor.nome}</span>
-                                                    </button>
-                                                ))}
-                                            </div>
-                                        </div>
-
-                                        {/* Preview */}
-                                        <div className="bg-white border border-gray-200 rounded-lg p-4">
-                                            <p className="text-sm font-medium text-gray-700 mb-2">
-                                                Serão criadas {tamanhosSelecionados.length * coresSelecionadas.length} variantes:
-                                            </p>
-                                            <p className="text-xs text-gray-600">
-                                                {tamanhosSelecionados.length} tamanhos × {coresSelecionadas.length} cores
-                                            </p>
+                                    {/* Tamanhos */}
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">Tamanhos Disponíveis</label>
+                                        <div className="flex flex-wrap gap-2">
+                                            {tamanhos.map(tam => (
+                                                <button
+                                                    key={tam}
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setTamanhosSelecionados(prev =>
+                                                            prev.includes(tam) ? prev.filter(t => t !== tam) : [...prev, tam]
+                                                        );
+                                                    }}
+                                                    className={`px-4 py-2 rounded-lg border-2 font-medium transition-colors ${tamanhosSelecionados.includes(tam)
+                                                        ? 'border-green-600 bg-green-50 text-green-700'
+                                                        : 'border-gray-300 bg-white text-gray-700 hover:border-gray-400'
+                                                        }`}
+                                                >
+                                                    {tam}
+                                                </button>
+                                            ))}
                                         </div>
                                     </div>
 
-                                    {/* Precificação */}
-                                    <div className="space-y-4">
-                                        <h3 className="text-sm font-semibold text-gray-900 uppercase">Precificação Base</h3>
-
-                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                            <div>
-                                                <label className="block text-sm font-medium text-gray-700 mb-1">Custo de Produção (R$) *</label>
-                                                <input
-                                                    type="number"
-                                                    step="0.01"
-                                                    value={precoBase}
-                                                    onChange={(e) => setPrecoBase(parseFloat(e.target.value) || 0)}
-                                                    placeholder="0.00"
-                                                    required
-                                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                                                />
-                                                <p className="text-xs text-gray-500 mt-1">Baseado na Lista de Materiais</p>
-                                            </div>
-                                            <div>
-                                                <label className="block text-sm font-medium text-gray-700 mb-1">Margem de Lucro (%)</label>
-                                                <input
-                                                    type="number"
-                                                    value={margem}
-                                                    onChange={(e) => setMargem(parseFloat(e.target.value) || 0)}
-                                                    placeholder="150"
-                                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                                                />
-                                            </div>
-                                            <div>
-                                                <label className="block text-sm font-medium text-gray-700 mb-1">Preço de Venda (R$)</label>
-                                                <div className="w-full px-3 py-2 border-2 border-green-500 bg-green-50 rounded-lg font-semibold text-green-700">
-                                                    R$ {calcularPrecoSugerido().toFixed(2)}
-                                                </div>
-                                                <p className="text-xs text-gray-500 mt-1">Preço sugerido</p>
-                                            </div>
+                                    {/* Cores */}
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-4">Cores Disponíveis</label>
+                                        <div className="space-y-6">
+                                            {Array.from(new Set(coresOdo.map(c => c.grupo))).map(grupo => {
+                                                const coresDoGrupo = coresOdo.filter(c => c.grupo === grupo);
+                                                return (
+                                                    <div key={grupo}>
+                                                        <h4 className="text-xs font-semibold text-gray-500 uppercase mb-2 tracking-wider flex items-center gap-2">
+                                                            <span className="w-2 h-2 rounded-full bg-gray-300"></span>
+                                                            {grupo}
+                                                        </h4>
+                                                        <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                                                            {coresDoGrupo.map(cor => (
+                                                                <button
+                                                                    key={cor.codigo}
+                                                                    type="button"
+                                                                    onClick={() => {
+                                                                        setCoresSelecionadas(prev =>
+                                                                            prev.includes(cor.nome) ? prev.filter(c => c !== cor.nome) : [...prev, cor.nome]
+                                                                        );
+                                                                    }}
+                                                                    className={`flex items-center gap-2 px-3 py-2 rounded-lg border-2 transition-all ${coresSelecionadas.includes(cor.nome)
+                                                                        ? 'border-green-600 bg-green-50 shadow-sm'
+                                                                        : 'border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50'
+                                                                        }`}
+                                                                >
+                                                                    <div
+                                                                        className="w-6 h-6 rounded-full border border-gray-200 shadow-sm shrink-0"
+                                                                        style={{ backgroundColor: cor.hex }}
+                                                                    />
+                                                                    <span className={`text-sm font-medium truncate ${coresSelecionadas.includes(cor.nome) ? 'text-green-700' : 'text-gray-700'}`}>
+                                                                        {cor.nome}
+                                                                    </span>
+                                                                </button>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
                                         </div>
                                     </div>
-                                </>
-                            )}
+
+                                    {/* Preview */}
+                                    <div className="bg-white border border-gray-200 rounded-lg p-4">
+                                        <p className="text-sm font-medium text-gray-700 mb-2">
+                                            Serão criadas {tamanhosSelecionados.length * coresSelecionadas.length} variantes:
+                                        </p>
+                                        <p className="text-xs text-gray-600">
+                                            {tamanhosSelecionados.length} tamanhos × {coresSelecionadas.length} cores
+                                        </p>
+                                    </div>
+                                </div>
+
+                                {/* Precificação */}
+                                <div className="space-y-4">
+                                    <h3 className="text-sm font-semibold text-gray-900 uppercase">Precificação Base</h3>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">Custo de Produção (R$) *</label>
+                                            <input
+                                                type="number"
+                                                step="0.01"
+                                                value={precoBase}
+                                                onChange={(e) => setPrecoBase(parseFloat(e.target.value) || 0)}
+                                                placeholder="0.00"
+                                                required
+                                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                                            />
+                                            <p className="text-xs text-gray-500 mt-1">Baseado na Lista de Materiais</p>
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">Margem de Lucro (%)</label>
+                                            <input
+                                                type="number"
+                                                value={margem}
+                                                onChange={(e) => setMargem(parseFloat(e.target.value) || 0)}
+                                                placeholder="150"
+                                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">Preço de Venda (R$)</label>
+                                            <div className="w-full px-3 py-2 border-2 border-green-500 bg-green-50 rounded-lg font-semibold text-green-700">
+                                                R$ {calcularPrecoSugerido().toFixed(2)}
+                                            </div>
+                                            <p className="text-xs text-gray-500 mt-1">Preço sugerido</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
 
                             {/* Botões */}
                             <div className="flex gap-3 border-t border-gray-200 pt-4">
@@ -728,7 +939,7 @@ const Produtos: React.FC = () => {
                                     <tbody>
                                         {variantes.map(variante => {
                                             const produto = produtos.find(p => p.id === variante.produto_id);
-                                            const margem = variante.custo_producao > 0 
+                                            const margem = variante.custo_producao > 0
                                                 ? ((variante.preco_venda - variante.custo_producao) / variante.custo_producao * 100).toFixed(0)
                                                 : '0';
                                             const cor = coresOdo.find(c => c.nome === variante.cor);
@@ -757,6 +968,15 @@ const Produtos: React.FC = () => {
                                                         </span>
                                                     </td>
                                                     <td className="py-3 px-4">
+                                                        <button
+                                                            onClick={() => handleEditVariante(variante)}
+                                                            className="p-1 text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                                                            title="Editar variante"
+                                                        >
+                                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                                            </svg>
+                                                        </button>
                                                         <button
                                                             onClick={() => handleDeleteVariante(variante.id)}
                                                             className="p-1 text-red-600 hover:bg-red-50 rounded transition-colors"
@@ -904,9 +1124,9 @@ const Produtos: React.FC = () => {
                                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                                                                 </svg>
                                                             </button>
-                                                            <button 
+                                                            <button
                                                                 onClick={() => handleDeleteCategoria(categoria.id)}
-                                                                className="p-1.5 text-red-600 hover:bg-red-50 rounded transition-colors" 
+                                                                className="p-1.5 text-red-600 hover:bg-red-50 rounded transition-colors"
                                                                 title="Excluir"
                                                             >
                                                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -929,7 +1149,7 @@ const Produtos: React.FC = () => {
                 return (
                     <div className="bg-white rounded-lg shadow-md p-6">
                         <div className="flex justify-between items-center mb-6">
-                            <h2 className="text-xl font-semibold text-gray-900">Nova Variante</h2>
+                            <h2 className="text-xl font-semibold text-gray-900">{editingVariante ? 'Editar Variante' : 'Nova Variante'}</h2>
                             <button
                                 onClick={() => {
                                     resetFormVariante();
@@ -945,7 +1165,7 @@ const Produtos: React.FC = () => {
                             {/* Seção 1: Produto e Identificação */}
                             <div className="space-y-4">
                                 <h3 className="text-sm font-semibold text-gray-900 uppercase">Produto e Identificação</h3>
-                                
+
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-1">Produto *</label>
@@ -993,7 +1213,7 @@ const Produtos: React.FC = () => {
                             {/* Seção 2: Cores e Tecidos */}
                             <div className="space-y-4">
                                 <h3 className="text-sm font-semibold text-gray-900 uppercase">Cores e Tecidos</h3>
-                                
+
                                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-1">Cor do Tecido *</label>
@@ -1003,8 +1223,13 @@ const Produtos: React.FC = () => {
                                             required
                                             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                                         >
-                                            {coresOdo.map(c => (
-                                                <option key={c.nome} value={c.nome}>{c.nome}</option>
+                                            <option value="">Selecione uma cor...</option>
+                                            {Array.from(new Set(coresOdo.map(c => c.grupo))).map(grupo => (
+                                                <optgroup key={grupo} label={grupo}>
+                                                    {coresOdo.filter(c => c.grupo === grupo).map(c => (
+                                                        <option key={c.nome} value={c.nome}>{c.nome}</option>
+                                                    ))}
+                                                </optgroup>
                                             ))}
                                         </select>
                                     </div>
@@ -1017,13 +1242,9 @@ const Produtos: React.FC = () => {
                                             required
                                             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                                         >
-                                            <option value="Tricoline">Tricoline</option>
-                                            <option value="Oxford">Oxford</option>
-                                            <option value="Viscolinho">Viscolinho</option>
-                                            <option value="Algodão">Algodão</option>
-                                            <option value="Sarja leve">Sarja leve</option>
-                                            <option value="Linho misto">Linho misto</option>
-                                            <option value="Viscose">Viscose</option>
+                                            <option value="Linho">Linho</option>
+                                            <option value="Linho + Viscose">Linho + Viscose</option>
+                                            <option value="Cambraia de Linho">Cambraia de Linho</option>
                                         </select>
                                     </div>
 
@@ -1035,14 +1256,14 @@ const Produtos: React.FC = () => {
                                             required
                                             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                                         >
-                                            <option value="Branco">Branco</option>
-                                            <option value="Preto">Preto</option>
-                                            <option value="Cinza">Cinza</option>
-                                            <option value="Marrom">Marrom</option>
-                                            <option value="Verde">Verde</option>
-                                            <option value="Vermelho">Vermelho</option>
-                                            <option value="Azul">Azul</option>
-                                            <option value="Amarelo">Amarelo</option>
+                                            <option value="">Selecione a cor da linha...</option>
+                                            {Array.from(new Set(coresOdo.map(c => c.grupo))).map(grupo => (
+                                                <optgroup key={grupo} label={grupo}>
+                                                    {coresOdo.filter(c => c.grupo === grupo).map(c => (
+                                                        <option key={c.nome} value={c.nome}>{c.nome}</option>
+                                                    ))}
+                                                </optgroup>
+                                            ))}
                                         </select>
                                     </div>
 
@@ -1062,7 +1283,7 @@ const Produtos: React.FC = () => {
                             {/* Seção 3: Detalhes de Modelagem */}
                             <div className="space-y-4">
                                 <h3 className="text-sm font-semibold text-gray-900 uppercase">Detalhes de Modelagem</h3>
-                                
+
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-1">Modelagem *</label>
@@ -1101,7 +1322,7 @@ const Produtos: React.FC = () => {
                             {/* Seção 4: Especificações Técnicas */}
                             <div className="space-y-4">
                                 <h3 className="text-sm font-semibold text-gray-900 uppercase">Especificações Técnicas</h3>
-                                
+
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-1">Peso da Variante (g) *</label>
@@ -1142,7 +1363,7 @@ const Produtos: React.FC = () => {
                             {/* Seção 5: Custos e Preços */}
                             <div className="space-y-4">
                                 <h3 className="text-sm font-semibold text-gray-900 uppercase">Custos e Preços</h3>
-                                
+
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-1">Custo Total (R$) *</label>
@@ -1182,7 +1403,7 @@ const Produtos: React.FC = () => {
                             {/* Seção 6: Estoque e Observações */}
                             <div className="space-y-4">
                                 <h3 className="text-sm font-semibold text-gray-900 uppercase">Status e Observações</h3>
-                                
+
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-1">Status de Estoque *</label>

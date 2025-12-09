@@ -20,6 +20,9 @@ import Requisicoes from './pages/compras/Requisicoes';
 import Produtos from './pages/cadastros/Produtos';
 import VariantesSKUs from './pages/cadastros/VariantesSKUs';
 
+// Estoque
+import Materiais from './pages/estoque/Materiais';
+
 // Placeholder
 import PlaceholderPage from './pages/PlaceholderPage';
 
@@ -68,7 +71,7 @@ const AppRoutes: React.FC = () => {
       <Route path="/compras/requisicoes" element={<ProtectedRoute><Requisicoes /></ProtectedRoute>} />
 
       {/* Estoque */}
-      <Route path="/estoque/materiais" element={<ProtectedRoute><PlaceholderPage title="Materiais" description="Tecidos, aviamentos e embalagens" icon="🧵" /></ProtectedRoute>} />
+      <Route path="/estoque/materiais" element={<ProtectedRoute><Materiais /></ProtectedRoute>} />
       <Route path="/estoque/movimentacoes" element={<ProtectedRoute><PlaceholderPage title="Movimentações" description="Entradas e saídas de estoque" icon="📊" /></ProtectedRoute>} />
       <Route path="/estoque/inventario" element={<ProtectedRoute><PlaceholderPage title="Inventário" description="Contagem e ajustes" icon="📋" /></ProtectedRoute>} />
       <Route path="/estoque/localizacoes" element={<ProtectedRoute><PlaceholderPage title="Localizações" description="Organize seu estoque" icon="📍" /></ProtectedRoute>} />
