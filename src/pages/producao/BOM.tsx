@@ -22,16 +22,13 @@ const BOM: React.FC = () => {
     const [editingItemId, setEditingItemId] = useState<string | null>(null);
     const [selectedProdutoId, setSelectedProdutoId] = useState<string>('');
 
-    const { boms, loading, createBOM, addBOMItem, updateBOMItem, deleteBOMItem } = useBOM();
+    const { boms, createBOM, addBOMItem, updateBOMItem, deleteBOMItem } = useBOM();
     const { produtos } = useProdutos();
 
     const calcularCustoTotal = (items: BOMItem[]) => {
         return items.reduce((total, item) => total + (item.quantidade * item.custo), 0);
     };
 
-    const adicionarItem = () => {
-        setItems([...items, { tipo: 'Tecido', nome: '', quantidade: 0, unidade: 'm', custo: 0 }]);
-    };
 
     const removerItem = (index: number) => {
         if (items.length > 1) {
