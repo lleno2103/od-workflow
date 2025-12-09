@@ -11,26 +11,40 @@ const FichasTecnicas: React.FC = () => {
     const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
     const [codigoAutoGerado, setCodigoAutoGerado] = useState<string>('');
 
-    const fichas = fichasDB && fichasDB.length > 0 ? fichasDB : [
+    const defaultFichas = [
         {
             id: '1',
             codigo: 'FT-001',
-            nome: 'Bata Odò - Henley',
             variante: 'M - Verde Bandeira',
             material: 'Linho 100%',
             fornecedor: 'Tecidos Brasil',
-            composicao: '100% Linho'
+            composicao: '100% Linho',
+            produto_id: '',
+            medidas: null,
+            especificacoes_costura: null,
+            observacoes: null,
+            ativo: true,
+            created_at: '',
+            updated_at: ''
         },
         {
             id: '2',
             codigo: 'FT-002',
-            nome: 'Bermuda Odò',
             variante: 'G - Azul Royal',
             material: 'Linho + Viscose',
             fornecedor: 'Tecidos Brasil',
-            composicao: '70% Linho, 30% Viscose'
+            composicao: '70% Linho, 30% Viscose',
+            produto_id: '',
+            medidas: null,
+            especificacoes_costura: null,
+            observacoes: null,
+            ativo: true,
+            created_at: '',
+            updated_at: ''
         },
     ];
+
+    const fichas = fichasDB && fichasDB.length > 0 ? fichasDB : defaultFichas;
 
     // Funções CRUD
     const handleEdit = (ficha: any) => {
@@ -39,7 +53,7 @@ const FichasTecnicas: React.FC = () => {
         setActiveTab('nova');
     };
 
-    const handleDelete = (id: string) => {
+    const handleDelete = (_id: string) => {
         // Implementar delete real no banco
         setDeleteConfirm(null);
     };
@@ -92,7 +106,7 @@ const FichasTecnicas: React.FC = () => {
                                     <div className="flex justify-between items-start mb-3">
                                         <div>
                                             <h3 className="font-semibold text-black">{ficha.codigo}</h3>
-                                            <p className="text-sm text-gray-900 mt-1">{ficha.nome}</p>
+                                            <p className="text-sm text-gray-900 mt-1">{ficha.codigo}</p>
                                         </div>
                                         <span className="px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium">
                                             Ativa

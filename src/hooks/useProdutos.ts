@@ -29,28 +29,19 @@ export interface Categoria {
   descricao: string | null;
 }
 
+// Interface that matches the actual database schema
 export interface Variante {
   id: string;
   produto_id: string;
   sku: string;
   tamanho: string;
   cor: string;
-  tipo_tecido: string;
-  comprimento?: string | null;
-  modelagem: string;
-  bordado: string;
-  cor_linha: string;
-  peso_variante: number;
-  consumo_tecido: number;
-  custo_total: number;
-  preco_venda: number;
   custo_producao: number;
-  fotos_variante?: string | null;
-  status_estoque: string;
-  observacoes_tecnicas?: string | null;
+  preco_venda: number;
   estoque: number;
   ativo: boolean;
   created_at?: string;
+  updated_at?: string;
 }
 
 export interface VarianteInput {
@@ -58,19 +49,8 @@ export interface VarianteInput {
   sku: string;
   tamanho: string;
   cor: string;
-  tipo_tecido: string;
-  comprimento?: string;
-  modelagem: string;
-  bordado: string;
-  cor_linha: string;
-  peso_variante: number;
-  consumo_tecido: number;
-  custo_total: number;
-  preco_venda: number;
   custo_producao?: number;
-  fotos_variante?: string;
-  status_estoque: string;
-  observacoes_tecnicas?: string;
+  preco_venda?: number;
   estoque?: number;
   ativo?: boolean;
 }
