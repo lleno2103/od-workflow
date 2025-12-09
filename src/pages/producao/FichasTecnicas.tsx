@@ -1,24 +1,17 @@
 import React, { useState } from 'react';
 import { Layout } from '../../components';
+import { useFichasTecnicas } from '../../hooks/useFichasTecnicas';
 
 type TabType = 'lista' | 'nova';
 
-interface FichaTecnica {
-    id: string;
-    codigo: string;
-    nome: string;
-    variante: string;
-    material: string;
-    fornecedor: string;
-    composicao: string;
-}
-
 const FichasTecnicas: React.FC = () => {
+    const { fichas: fichasDB, generateNextFtNumber } = useFichasTecnicas();
     const [activeTab, setActiveTab] = useState<TabType>('lista');
-    const [editingFicha, setEditingFicha] = useState<FichaTecnica | null>(null);
+    const [editingFicha, setEditingFicha] = useState<any | null>(null);
     const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+    const [codigoAutoGerado, setCodigoAutoGerado] = useState<string>('');
 
-    const [fichas, setFichas] = useState<FichaTecnica[]>([
+    const fichas = fichasDB && fichasDB.length > 0 ? fichasDB : [
         {
             id: '1',
             codigo: 'FT-001',
@@ -37,28 +30,37 @@ const FichasTecnicas: React.FC = () => {
             fornecedor: 'Tecidos Brasil',
             composicao: '70% Linho, 30% Viscose'
         },
-    ]);
+    ];
 
     // Funções CRUD
-    const handleEdit = (ficha: FichaTecnica) => {
+    const handleEdit = (ficha: any) => {
         setEditingFicha(ficha);
+        setCodigoAutoGerado(ficha.codigo);
         setActiveTab('nova');
     };
 
     const handleDelete = (id: string) => {
-        setFichas(fichas.filter(f => f.id !== id));
+        // Implementar delete real no banco
         setDeleteConfirm(null);
     };
 
     const handleSave = (e: React.FormEvent) => {
         e.preventDefault();
         setEditingFicha(null);
+        setCodigoAutoGerado('');
         setActiveTab('lista');
     };
 
     const handleCancel = () => {
         setEditingFicha(null);
+        setCodigoAutoGerado('');
         setActiveTab('lista');
+    };
+
+    const onNovaFicha = () => {
+        setCodigoAutoGerado(generateNextFtNumber(fichas));
+        setEditingFicha(null);
+        setActiveTab('nova');
     };
 
     const tabs = [
@@ -77,7 +79,7 @@ const FichasTecnicas: React.FC = () => {
                                 <p className="text-sm text-gray-500">Gerencie as especificações técnicas dos produtos</p>
                             </div>
                             <button
-                                onClick={() => setActiveTab('nova')}
+                                onClick={onNovaFicha}
                                 className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium"
                             >
                                 + Nova Ficha
@@ -143,9 +145,12 @@ const FichasTecnicas: React.FC = () => {
                                         <label className="block text-sm font-medium text-gray-700 mb-1">Código / SKU</label>
                                         <input
                                             type="text"
-                                            placeholder="FT-003"
-                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                                            value={codigoAutoGerado}
+                                            disabled={!editingFicha}
+                                            placeholder="FT-0001"
+                                            className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent ${!editingFicha ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                                         />
+                                        {!editingFicha && <p className="text-xs text-gray-500 mt-1">Número gerado automaticamente</p>}
                                     </div>
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-1">Nome do Produto</label>
@@ -370,7 +375,7 @@ const FichasTecnicas: React.FC = () => {
                     <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
                         <h3 className="text-lg font-semibold text-black mb-2">Confirmar Exclusão</h3>
                         <p className="text-gray-600 mb-6">
-                            Tem certeza que deseja excluir a ficha {fichas.find(f => f.id === deleteConfirm)?.codigo}?
+                            Tem certeza que deseja excluir a ficha {fichasDB?.find(f => f.id === deleteConfirm)?.codigo || fichas.find(f => f.id === deleteConfirm)?.codigo}?
                             Esta ação não pode ser desfeita.
                         </p>
                         <div className="flex gap-3 justify-end">

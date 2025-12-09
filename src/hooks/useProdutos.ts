@@ -35,10 +35,22 @@ export interface Variante {
   sku: string;
   tamanho: string;
   cor: string;
+  tipo_tecido: string;
+  comprimento?: string | null;
+  modelagem: string;
+  bordado: string;
+  cor_linha: string;
+  peso_variante: number;
+  consumo_tecido: number;
+  custo_total: number;
   preco_venda: number;
   custo_producao: number;
+  fotos_variante?: string | null;
+  status_estoque: string;
+  observacoes_tecnicas?: string | null;
   estoque: number;
   ativo: boolean;
+  created_at?: string;
 }
 
 export interface VarianteInput {
@@ -46,8 +58,19 @@ export interface VarianteInput {
   sku: string;
   tamanho: string;
   cor: string;
-  preco_venda?: number;
+  tipo_tecido: string;
+  comprimento?: string;
+  modelagem: string;
+  bordado: string;
+  cor_linha: string;
+  peso_variante: number;
+  consumo_tecido: number;
+  custo_total: number;
+  preco_venda: number;
   custo_producao?: number;
+  fotos_variante?: string;
+  status_estoque: string;
+  observacoes_tecnicas?: string;
   estoque?: number;
   ativo?: boolean;
 }
@@ -174,6 +197,25 @@ export function useProdutos() {
     return data;
   };
 
+  const updateCategoria = async (id: string, nome: string, descricao?: string) => {
+    const { data, error } = await supabase
+      .from('categorias')
+      .update({ nome, descricao })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) {
+      toast.error('Erro ao atualizar categoria');
+      console.error(error);
+      return null;
+    }
+    
+    toast.success('Categoria atualizada');
+    await fetchCategorias();
+    return data;
+  };
+
   const deleteCategoria = async (id: string) => {
     const { error } = await supabase
       .from('categorias')
@@ -205,6 +247,25 @@ export function useProdutos() {
     }
     
     toast.success('Variante criada');
+    await fetchVariantes();
+    return data;
+  };
+
+  const updateVariante = async (id: string, variante: Partial<VarianteInput>) => {
+    const { data, error } = await supabase
+      .from('variantes')
+      .update(variante)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) {
+      toast.error('Erro ao atualizar variante');
+      console.error(error);
+      return null;
+    }
+    
+    toast.success('Variante atualizada');
     await fetchVariantes();
     return data;
   };
@@ -243,8 +304,10 @@ export function useProdutos() {
     updateProduto,
     deleteProduto,
     createCategoria,
+    updateCategoria,
     deleteCategoria,
     createVariante,
+    updateVariante,
     deleteVariante,
   };
 }

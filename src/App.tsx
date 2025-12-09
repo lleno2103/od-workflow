@@ -18,6 +18,7 @@ import Requisicoes from './pages/compras/Requisicoes';
 
 // Produtos
 import Produtos from './pages/cadastros/Produtos';
+import VariantesSKUs from './pages/cadastros/VariantesSKUs';
 
 // Placeholder
 import PlaceholderPage from './pages/PlaceholderPage';
@@ -58,7 +59,7 @@ const AppRoutes: React.FC = () => {
 
       {/* Produtos */}
       <Route path="/produtos/lista" element={<ProtectedRoute><Produtos /></ProtectedRoute>} />
-      <Route path="/produtos/variantes" element={<ProtectedRoute><Produtos /></ProtectedRoute>} />
+      <Route path="/produtos/variantes" element={<ProtectedRoute><VariantesSKUs /></ProtectedRoute>} />
       <Route path="/produtos/categorias" element={<ProtectedRoute><Produtos /></ProtectedRoute>} />
 
       {/* Compras */}

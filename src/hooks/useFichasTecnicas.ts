@@ -50,6 +50,24 @@ export function useFichasTecnicas() {
     setLoading(false);
   };
 
+  const generateNextFtNumber = (fichasAtuais: FichaTecnica[]): string => {
+    if (fichasAtuais.length === 0) {
+      return 'FT-0001';
+    }
+
+    // Extrai os números das FTs existentes
+    const numeros = fichasAtuais
+      .map(ft => {
+        const match = ft.codigo.match(/FT-(\d+)/);
+        return match ? parseInt(match[1], 10) : 0;
+      })
+      .sort((a, b) => b - a); // Ordena em ordem decrescente
+
+    // Pega o maior número e adiciona 1
+    const proximoNumero = numeros[0] + 1;
+    return `FT-${String(proximoNumero).padStart(4, '0')}`;
+  };
+
   const createFicha = async (ficha: FichaTecnicaInput) => {
     const { data, error } = await supabase
       .from('fichas_tecnicas')
@@ -113,5 +131,6 @@ export function useFichasTecnicas() {
     createFicha,
     updateFicha,
     deleteFicha,
+    generateNextFtNumber,
   };
 }

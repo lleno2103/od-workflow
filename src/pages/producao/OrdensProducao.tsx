@@ -6,7 +6,7 @@ import { useProdutos } from '../../hooks/useProdutos';
 type TabType = 'lista' | 'nova' | 'em-andamento' | 'concluidas';
 
 const OrdensProducao: React.FC = () => {
-    const { ordens, loading, createOrdem, updateOrdem, deleteOrdem } = useOrdensProducao();
+    const { ordens, loading, createOrdem, updateOrdem, deleteOrdem, generateNextOpNumber } = useOrdensProducao();
     const { produtos } = useProdutos();
     const [activeTab, setActiveTab] = useState<TabType>('lista');
     const [editingOP, setEditingOP] = useState<string | null>(null);
@@ -30,7 +30,7 @@ const OrdensProducao: React.FC = () => {
 
     const resetForm = () => {
         setFormData({
-            numero: '',
+            numero: generateNextOpNumber(ordens),
             data: new Date().toISOString().split('T')[0],
             produto_id: produtos[0]?.id || '',
             variante: 'M',
@@ -148,10 +148,12 @@ const OrdensProducao: React.FC = () => {
                                     type="text"
                                     value={formData.numero}
                                     onChange={(e) => setFormData({...formData, numero: e.target.value})}
-                                    placeholder="OP-004"
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                                    disabled={!editingOP}
+                                    placeholder="OP-0001"
+                                    className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent ${!editingOP ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                                     required
                                 />
+                                {!editingOP && <p className="text-xs text-gray-500 mt-1">Número gerado automaticamente</p>}
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Data de Emissão</label>

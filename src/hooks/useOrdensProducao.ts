@@ -54,6 +54,24 @@ export function useOrdensProducao() {
     setLoading(false);
   };
 
+  const generateNextOpNumber = (ordensAtuais: OrdemProducao[]): string => {
+    if (ordensAtuais.length === 0) {
+      return 'OP-0001';
+    }
+
+    // Extrai os números das OPs existentes
+    const numeros = ordensAtuais
+      .map(op => {
+        const match = op.numero.match(/OP-(\d+)/);
+        return match ? parseInt(match[1], 10) : 0;
+      })
+      .sort((a, b) => b - a); // Ordena em ordem decrescente
+
+    // Pega o maior número e adiciona 1
+    const proximoNumero = numeros[0] + 1;
+    return `OP-${String(proximoNumero).padStart(4, '0')}`;
+  };
+
   const createOrdem = async (ordem: OrdemProducaoInput) => {
     const { data, error } = await supabase
       .from('ordens_producao')
@@ -117,5 +135,6 @@ export function useOrdensProducao() {
     createOrdem,
     updateOrdem,
     deleteOrdem,
+    generateNextOpNumber,
   };
 }
