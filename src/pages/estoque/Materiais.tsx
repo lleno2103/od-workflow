@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Layout } from '../../components';
 import { useMateriais, type Material } from '../../hooks/useMateriais';
-import { toast } from 'sonner';
 
 const tiposMaterial = [
     'Tecido',
@@ -30,7 +29,7 @@ const unidadesMedida = [
 type TabType = 'lista' | 'novo';
 
 const Materiais: React.FC = () => {
-    const { materiais, loading, createMaterial, updateMaterial, deleteMaterial, fetchMateriais } = useMateriais();
+    const { materiais, createMaterial, updateMaterial, deleteMaterial, fetchMateriais } = useMateriais();
     const [activeTab, setActiveTab] = useState<TabType>('lista');
     const [searchTerm, setSearchTerm] = useState('');
     const [filtroTipo, setFiltroTipo] = useState('todos');

@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Layout } from '../../components';
 import { supabase } from '../../integrations/supabase/client';
 import { toast } from 'sonner';
+
+const supabaseAny = supabase as any;
 import { useMateriais } from '../../hooks/useMateriais';
 
 type TabType = 'lista' | 'novo';
@@ -92,14 +94,14 @@ const PedidosCompra: React.FC = () => {
     }, [activeTab, editingPedido]);
 
     const fetchFornecedores = async () => {
-        const { data } = await supabase.from('compras_fornecedores').select('id, nome');
+        const { data } = await supabaseAny.from('compras_fornecedores').select('id, nome');
         if (data) setFornecedores(data);
     };
 
     const fetchPedidos = async () => {
         setLoading(true);
         try {
-            const { data, error } = await supabase
+            const { data, error } = await supabaseAny
                 .from('compras_pedidos')
                 .select(`
                     *,
@@ -126,7 +128,7 @@ const PedidosCompra: React.FC = () => {
     const handleDelete = async (id: string) => {
         if (!window.confirm('Tem certeza que deseja excluir este pedido?')) return;
         try {
-            const { error } = await supabase.from('compras_pedidos').delete().eq('id', id);
+            const { error } = await supabaseAny.from('compras_pedidos').delete().eq('id', id);
             if (error) throw error;
             toast.success('Pedido excluído');
             fetchPedidos();
@@ -154,11 +156,11 @@ const PedidosCompra: React.FC = () => {
             };
 
             if (editingPedido) {
-                const { error } = await supabase.from('compras_pedidos').update(pedidoData).eq('id', pedidoId);
+                const { error } = await supabaseAny.from('compras_pedidos').update(pedidoData).eq('id', pedidoId!);
                 if (error) throw error;
-                await supabase.from('compras_itens_pedido').delete().eq('pedido_id', pedidoId);
+                await supabaseAny.from('compras_itens_pedido').delete().eq('pedido_id', pedidoId!);
             } else {
-                const { data, error } = await supabase.from('compras_pedidos').insert([pedidoData]).select().single();
+                const { data, error } = await supabaseAny.from('compras_pedidos').insert([pedidoData]).select().single();
                 if (error) throw error;
                 pedidoId = data.id;
             }
@@ -172,7 +174,7 @@ const PedidosCompra: React.FC = () => {
                     unidade: item.unidade,
                     valor_unitario: item.valor_unitario
                 }));
-                const { error: itemError } = await supabase.from('compras_itens_pedido').insert(itensToInsert);
+                const { error: itemError } = await supabaseAny.from('compras_itens_pedido').insert(itensToInsert);
                 if (itemError) throw itemError;
             }
 

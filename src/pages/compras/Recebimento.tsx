@@ -3,6 +3,8 @@ import { Layout } from '../../components';
 import { supabase } from '../../integrations/supabase/client';
 import { toast } from 'sonner';
 
+const supabaseAny = supabase as any;
+
 type TabType = 'lista' | 'novo';
 
 interface ItemRecebimento {
@@ -86,7 +88,7 @@ const Recebimento: React.FC = () => {
     const fetchRecebimentos = async () => {
         setLoading(true);
         try {
-            const { data, error } = await supabase
+            const { data, error } = await supabaseAny
                 .from('compras_recebimentos')
                 .select(`
                     *,
@@ -107,11 +109,11 @@ const Recebimento: React.FC = () => {
 
     const fetchPedidosParaRecebimento = async () => {
         // Fetch orders that are NOT cancelled
-        const { data, error } = await supabase
+        const { data } = await supabaseAny
             .from('compras_pedidos')
             .select('id, numero, fornecedor:compras_fornecedores(nome)')
             .neq('status', 'cancelado')
-            .neq('status', 'recebido') // Ideally exclude fully received ones
+            .neq('status', 'recebido')
             .order('created_at', { ascending: false });
 
         if (data) setPedidosDisponiveis(data as unknown as PedidoSimples[]);
@@ -125,16 +127,16 @@ const Recebimento: React.FC = () => {
         }
 
         // Load items from the order
-        const { data, error } = await supabase
+        const { data } = await supabaseAny
             .from('compras_itens_pedido')
             .select('*')
             .eq('pedido_id', pedidoId);
 
         if (data) {
-            const itensParaReceber = data.map(item => ({
+            const itensParaReceber = data.map((item: any) => ({
                 material_nome: item.material_nome,
                 quantidade_pedida: item.quantidade,
-                quantidade_recebida: item.quantidade, // Default to full receipt
+                quantidade_recebida: item.quantidade,
                 unidade: item.unidade,
                 valor_unitario: item.valor_unitario
             }));
@@ -150,7 +152,7 @@ const Recebimento: React.FC = () => {
     const handleDelete = async (id: string) => {
         if (!window.confirm('Tem certeza que deseja excluir este recebimento?')) return;
         try {
-            const { error } = await supabase.from('compras_recebimentos').delete().eq('id', id);
+            const { error } = await supabaseAny.from('compras_recebimentos').delete().eq('id', id);
             if (error) throw error;
             toast.success('Recebimento excluído');
             fetchRecebimentos();
@@ -178,11 +180,11 @@ const Recebimento: React.FC = () => {
             };
 
             if (editingRecebimento) {
-                const { error } = await supabase.from('compras_recebimentos').update(recData).eq('id', recebimentoId);
+                const { error } = await supabaseAny.from('compras_recebimentos').update(recData).eq('id', recebimentoId!);
                 if (error) throw error;
-                await supabase.from('compras_itens_recebimento').delete().eq('recebimento_id', recebimentoId);
+                await supabaseAny.from('compras_itens_recebimento').delete().eq('recebimento_id', recebimentoId!);
             } else {
-                const { data, error } = await supabase.from('compras_recebimentos').insert([recData]).select().single();
+                const { data, error } = await supabaseAny.from('compras_recebimentos').insert([recData]).select().single();
                 if (error) throw error;
                 recebimentoId = data.id;
             }
@@ -196,7 +198,7 @@ const Recebimento: React.FC = () => {
                     unidade: item.unidade,
                     valor_unitario: item.valor_unitario
                 }));
-                const { error: itemError } = await supabase.from('compras_itens_recebimento').insert(itensToInsert);
+                const { error: itemError } = await supabaseAny.from('compras_itens_recebimento').insert(itensToInsert);
                 if (itemError) throw itemError;
             }
 
