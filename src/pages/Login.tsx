@@ -7,20 +7,24 @@ const Login: React.FC = () => {
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [error, setError] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
     const { login } = useAuth();
     const navigate = useNavigate();
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        setIsLoading(true);
+        setError('');
 
-        const success = login(email, password);
+        const result = await login(email, password);
 
-        if (success) {
+        if (result.success) {
             navigate('/home');
         } else {
-            setError('Email ou senha incorretos');
+            setError(result.error || 'Email ou senha incorretos');
             setTimeout(() => setError(''), 3000);
         }
+        setIsLoading(false);
     };
 
     return (
@@ -87,9 +91,10 @@ const Login: React.FC = () => {
                     {/* Submit Button */}
                     <button
                         type="submit"
-                        className="w-full py-2.5 bg-black text-white rounded-lg text-sm font-medium hover:bg-gray-800 transition-all shadow-sm hover:shadow-md active:scale-[0.98]"
+                        disabled={isLoading}
+                        className="w-full py-2.5 bg-black text-white rounded-lg text-sm font-medium hover:bg-gray-800 transition-all shadow-sm hover:shadow-md active:scale-[0.98] disabled:opacity-50"
                     >
-                        Entrar
+                        {isLoading ? 'Entrando...' : 'Entrar'}
                     </button>
 
                     {/* Error Message */}
