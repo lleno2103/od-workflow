@@ -24,7 +24,11 @@ import VariantesSKUs from './pages/cadastros/VariantesSKUs';
 import PlaceholderPage from './pages/PlaceholderPage';
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, loading } = useAuth();
+
+  if (loading) {
+    return <div className="min-h-screen flex items-center justify-center"><span>Carregando...</span></div>;
+  }
 
   if (!isAuthenticated) {
     return <Navigate to="/" replace />;

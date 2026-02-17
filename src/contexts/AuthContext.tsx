@@ -1,51 +1,60 @@
 import React, { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
+import { supabase } from '../integrations/supabase/client';
+import type { User, Session } from '@supabase/supabase-js';
 
 interface AuthContextType {
     isAuthenticated: boolean;
     userEmail: string | null;
-    login: (email: string, password: string) => boolean;
-    logout: () => void;
+    user: User | null;
+    login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+    logout: () => Promise<void>;
+    loading: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const VALID_EMAIL = 'user@root.com';
-const VALID_PASSWORD = '14875021';
-
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-    const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
-    const [userEmail, setUserEmail] = useState<string | null>(null);
+    const [user, setUser] = useState<User | null>(null);
+    const [session, setSession] = useState<Session | null>(null);
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const loggedIn = localStorage.getItem('isLoggedIn') === 'true';
-        const email = localStorage.getItem('userEmail');
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+            setSession(session);
+            setUser(session?.user ?? null);
+            setLoading(false);
+        });
 
-        if (loggedIn && email) {
-            setIsAuthenticated(true);
-            setUserEmail(email);
-        }
+        supabase.auth.getSession().then(({ data: { session } }) => {
+            setSession(session);
+            setUser(session?.user ?? null);
+            setLoading(false);
+        });
+
+        return () => subscription.unsubscribe();
     }, []);
 
-    const login = (email: string, password: string): boolean => {
-        if (email === VALID_EMAIL && password === VALID_PASSWORD) {
-            localStorage.setItem('isLoggedIn', 'true');
-            localStorage.setItem('userEmail', email);
-            setIsAuthenticated(true);
-            setUserEmail(email);
-            return true;
+    const login = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) {
+            return { success: false, error: error.message };
         }
-        return false;
+        return { success: true };
     };
 
-    const logout = () => {
-        localStorage.removeItem('isLoggedIn');
-        localStorage.removeItem('userEmail');
-        setIsAuthenticated(false);
-        setUserEmail(null);
+    const logout = async () => {
+        await supabase.auth.signOut();
     };
 
     return (
-        <AuthContext.Provider value={{ isAuthenticated, userEmail, login, logout }}>
+        <AuthContext.Provider value={{
+            isAuthenticated: !!session,
+            userEmail: user?.email ?? null,
+            user,
+            login,
+            logout,
+            loading,
+        }}>
             {children}
         </AuthContext.Provider>
     );
